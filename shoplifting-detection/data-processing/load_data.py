@@ -1,0 +1,79 @@
+# Standard libraries
+import os
+import shutil
+
+# Kaggle dataset access
+import kagglehub  # type: ignore[import]
+import pandas as pd
+
+# Set random seed for reproducibility
+seed_constant = 27
+
+# Download latest version
+path = kagglehub.dataset_download("mateohervas/dcsass-dataset")
+
+print("Path to dataset files:", path)
+
+
+# Organising data
+folder_path = "data-processing/dataset"
+folder_names = ["0", "1"]
+
+if not os.path.exists(folder_path):
+    os.mkdir(folder_path)
+else:
+    print("Folder already exists...")
+    exit(1)
+
+for folder_name in folder_names:
+    if not os.path.exists(os.path.join(folder_path, folder_name)):
+        os.mkdir(os.path.join(folder_path, folder_name))
+    else:
+        print("folder already exists...")
+
+dataset = pd.read_csv(f"{path}/DCSASS Dataset/DCSASS Dataset/Labels/Shoplifting.csv")
+
+# the datasets column names are also the part of the dataset
+# first we will append that data into our dataframe and then rename the columns
+
+data = [dataset.columns[0], dataset.columns[1], int(dataset.columns[2])]
+
+dataset.loc[len(dataset)] = data
+
+dataset.rename(
+    columns={
+        "Shoplifting001_x264_0": "clipname",
+        "Shoplifting": "Shoplifting",
+        "0": "Action",
+    },
+    inplace=True,
+)
+
+ROOT_DIR = f"{path}/DCSASS Dataset/Shoplifting"
+DESTINATION_ROOT = "data-processing/dataset"
+DESTINATION_PATH_0 = f"{DESTINATION_ROOT}/0"
+DESTINATION_PATH_1 = f"{DESTINATION_ROOT}/1"
+
+directories = os.listdir(ROOT_DIR)
+
+for dir in directories:
+    for d in os.listdir(os.path.join(ROOT_DIR, dir)):
+        row = dataset.loc[dataset["clipname"] == d[:-4]]
+        if row["Action"].iloc[0] == 0:
+            print(ROOT_DIR)
+            shutil.copy(
+                os.path.join(ROOT_DIR, dir, d), os.path.join(DESTINATION_PATH_0, d)
+            )
+        else:
+            shutil.copy(
+                os.path.join(ROOT_DIR, dir, d), os.path.join(DESTINATION_PATH_1, d)
+            )
+
+print("Count of number of video clips with 0 and 1 :-")
+print(dataset["Action"].value_counts())
+print(
+    "---------------------------------------------------------------------------------------"
+)
+print("Video clips present in 0 and 1 :-")
+print("no shoplifting count : ", len(os.listdir(DESTINATION_PATH_0)))
+print("shoplifting count : ", len(os.listdir(DESTINATION_PATH_1)))
