@@ -137,6 +137,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.conda/
 
 # Spyder project settings
 .spyderproject
@@ -174,3 +175,9 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# --- Ultralytics / training outputs ---------------------------------
+runs/
+mlruns/
+# --- PyTorch weights & checkpoints ---------------------------------
+*.pt      
