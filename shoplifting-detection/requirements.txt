@@ -20,6 +20,7 @@ h5py==3.13.0
 idna==3.10
 isort==6.0.1
 joblib==1.4.2
+kagglehub==0.3.11
 keras==3.9.2
 kiwisolver==1.4.8
 libclang==18.1.1
@@ -38,6 +39,7 @@ opt_einsum==3.4.0
 optree==0.15.0
 packaging==24.2
 pandas==2.2.3
+pandas-stubs==2.2.3.250308
 pathspec==0.12.1
 pillow==11.2.1
 platformdirs==4.3.7
@@ -50,6 +52,7 @@ pyparsing==3.2.3
 python-dateutil==2.9.0.post0
 python-multipart==0.0.20
 pytz==2025.2
+PyYAML==6.0.2
 requests==2.32.3
 rich==14.0.0
 scikit-learn==1.6.1
@@ -64,11 +67,16 @@ tensorboard-data-server==0.7.2
 tensorflow==2.19.0
 termcolor==3.0.1
 threadpoolctl==3.6.0
+tqdm==4.67.1
+types-defusedxml==0.7.0.20240218
 types-docutils==0.21.0.20241128
 types-protobuf==5.29.1.20250403
 types-Pygments==2.19.0.20250305
+types-pytz==2025.2.0.20250326
 types-requests==2.32.0.20250328
+types-seaborn==0.13.2.20250111
 types-tensorflow==2.18.0.20250404
+types-ujson==5.10.0.20250326
 typing-inspection==0.4.0
 typing_extensions==4.13.2
 tzdata==2025.2
