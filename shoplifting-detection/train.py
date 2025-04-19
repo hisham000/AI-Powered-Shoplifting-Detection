@@ -21,17 +21,22 @@ from tensorflow.keras.layers import (  # type: ignore
 from tensorflow.keras.models import Model  # type: ignore
 from tensorflow.keras.utils import to_categorical  # type: ignore
 
-# Configuration
-DIM = 64
-IMAGE_HEIGHT = DIM
-IMAGE_WIDTH = DIM
-SEQUENCE_LENGTH = 30
-CLASSES_LIST = ["0", "1"]
-DATA_ROOT = "data-processing/dataset"
+from config import (
+    BATCH_SIZE,
+    CLASSES_LIST,
+    DATA_ROOT,
+    EARLY_STOP_PATIENCE,
+    EPOCHS,
+    EXPERIMENT_NAME,
+    IMAGE_HEIGHT,
+    IMAGE_WIDTH,
+    SEQUENCE_LENGTH,
+    TRACKING_URI,
+)
 
 # MLflow setup
-mlflow.set_tracking_uri(f"file://{os.path.abspath('mlruns')}")
-mlflow.set_experiment("video_classification_convlstm")
+mlflow.set_tracking_uri(TRACKING_URI)
+mlflow.set_experiment(EXPERIMENT_NAME)
 
 
 def extract_frames(video_path):
@@ -71,9 +76,9 @@ def main():
             "image_height": IMAGE_HEIGHT,
             "image_width": IMAGE_WIDTH,
             "num_classes": len(CLASSES_LIST),
-            "batch_size": 4,
-            "epochs": 50,
-            "early_stop_patience": 10,
+            "batch_size": BATCH_SIZE,
+            "epochs": EPOCHS,
+            "early_stop_patience": EARLY_STOP_PATIENCE,
         }
         mlflow.log_params(params)
 
