@@ -1,13 +1,8 @@
-# Standard libraries
 import os
 import shutil
 
-# Kaggle dataset access
 import kagglehub  # type: ignore[import]
 import pandas as pd
-
-# Set random seed for reproducibility
-seed_constant = 27
 
 # Download latest version
 path = kagglehub.dataset_download("mateohervas/dcsass-dataset")
@@ -31,7 +26,7 @@ for folder_name in folder_names:
     else:
         print("folder already exists...")
 
-dataset = pd.read_csv(f"{path}/DCSASS Dataset/DCSASS Dataset/Labels/Shoplifting.csv")
+dataset = pd.read_csv(f"{path}/DCSASS Dataset/Labels/Shoplifting.csv")
 
 # the datasets column names are also the part of the dataset
 # first we will append that data into our dataframe and then rename the columns
