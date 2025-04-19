@@ -10,19 +10,22 @@ path = kagglehub.dataset_download("mateohervas/dcsass-dataset")
 print("Path to dataset files:", path)
 
 
-# Organising data
-folder_path = "data-processing/dataset"
-folder_names = ["0", "1"]
+ROOT_DIR = f"{path}/DCSASS Dataset/Shoplifting"
+DESTINATION_ROOT = "data-processing/shoplifting/dataset"
+DESTINATION_PATH_0 = f"{DESTINATION_ROOT}/0"
+DESTINATION_PATH_1 = f"{DESTINATION_ROOT}/1"
+FOLDER_NAMES = ["0", "1"]
 
-if not os.path.exists(folder_path):
-    os.mkdir(folder_path)
+
+if not os.path.exists(DESTINATION_ROOT):
+    os.mkdir(DESTINATION_ROOT)
 else:
     print("Folder already exists...")
     exit(1)
 
-for folder_name in folder_names:
-    if not os.path.exists(os.path.join(folder_path, folder_name)):
-        os.mkdir(os.path.join(folder_path, folder_name))
+for folder_name in FOLDER_NAMES:
+    if not os.path.exists(os.path.join(DESTINATION_ROOT, folder_name)):
+        os.mkdir(os.path.join(DESTINATION_ROOT, folder_name))
     else:
         print("folder already exists...")
 
@@ -43,11 +46,6 @@ dataset.rename(
     },
     inplace=True,
 )
-
-ROOT_DIR = f"{path}/DCSASS Dataset/Shoplifting"
-DESTINATION_ROOT = "data-processing/dataset"
-DESTINATION_PATH_0 = f"{DESTINATION_ROOT}/0"
-DESTINATION_PATH_1 = f"{DESTINATION_ROOT}/1"
 
 directories = os.listdir(ROOT_DIR)
 
