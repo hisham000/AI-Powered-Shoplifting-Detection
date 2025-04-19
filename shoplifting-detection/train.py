@@ -1,18 +1,12 @@
-# Standard libraries
 import os
 
 import cv2
 import matplotlib.pyplot as plt
+import mlflow
+import mlflow.keras
 import numpy as np
 import seaborn as sns
-
-# TensorFlow and Keras
-from sklearn.metrics import (  # type: ignore[import]
-    confusion_matrix,
-    precision_recall_fscore_support,
-)
-
-# Scikit-learn
+from sklearn.metrics import confusion_matrix  # type: ignore[import]
 from sklearn.model_selection import train_test_split  # type: ignore[import]
 from tensorflow.keras.callbacks import EarlyStopping  # type: ignore
 from tensorflow.keras.layers import (  # type: ignore
@@ -27,208 +21,169 @@ from tensorflow.keras.layers import (  # type: ignore
 from tensorflow.keras.models import Model  # type: ignore
 from tensorflow.keras.utils import to_categorical  # type: ignore
 
-dim = 64
-
-IMAGE_HEIGHT = dim
-IMAGE_WIDTH = dim
-DESTINATION_ROOT = "data-processing/dataset"
-
-# Specify the number of frames that will be fed to the Neural Network
+# Configuration
+DIM = 64
+IMAGE_HEIGHT = DIM
+IMAGE_WIDTH = DIM
 SEQUENCE_LENGTH = 30
 CLASSES_LIST = ["0", "1"]
+DATA_ROOT = "data-processing/dataset"
+
+# MLflow setup
+mlflow.set_tracking_uri(f"file://{os.path.abspath('mlruns')}")
+mlflow.set_experiment("video_classification_convlstm")
 
 
-def frame_extraction(video_path):
-
-    frame_list = []
-
-    video_capture = cv2.VideoCapture(video_path)
-    video_frame_count = int(video_capture.get(cv2.CAP_PROP_FRAME_COUNT))
-    skip_frame_window = max(int(video_frame_count / SEQUENCE_LENGTH), 1)
-
-    for frame_counter in range(SEQUENCE_LENGTH):
-
-        # set the current frame position of the video
-        video_capture.set(cv2.CAP_PROP_POS_FRAMES, frame_counter * skip_frame_window)
-
-        success, frame = video_capture.read()
-
-        # check if the frame is successfully setup or not
+def extract_frames(video_path):
+    frames = []
+    cap = cv2.VideoCapture(video_path)
+    total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    step = max(int(total / SEQUENCE_LENGTH), 1)
+    for i in range(SEQUENCE_LENGTH):
+        cap.set(cv2.CAP_PROP_POS_FRAMES, i * step)
+        success, frame = cap.read()
         if not success:
             break
-
-        # Resize the frame into fixed size height and width
-        resized_frame = cv2.resize(frame, (IMAGE_HEIGHT, IMAGE_WIDTH))
-
-        # Normalise the given frame
-        normalized_frame = resized_frame / 255
-
-        # Append the normalised frame into  frame list
-        frame_list.append(normalized_frame)
-
-        # release the video capture object,
-    video_capture.release()
-
-    return frame_list
+        frame = cv2.resize(frame, (IMAGE_HEIGHT, IMAGE_WIDTH))
+        frames.append(frame / 255.0)
+    cap.release()
+    return frames
 
 
 def create_dataset():
-    features = []
-    labels = []
-    video_file_paths = []
-    for cls_index, cls in enumerate(CLASSES_LIST):
-        # Get the names of list of video files present in specific class name directory
-        file_list = os.listdir(os.path.join(DESTINATION_ROOT, cls))
-
-        for file in file_list:
-            video_file_path = os.path.join(DESTINATION_ROOT, cls, file)
-            frames = frame_extraction(video_file_path)
-            if len(frames) == SEQUENCE_LENGTH:
-                features.append(frames)
-                labels.append(cls_index)
-                video_file_paths.append(video_file_path)
-
-    # Converting list into numpy array
-
-    features = np.asarray(features)
-    labels = np.array(labels)
-    return features, labels, video_file_paths
+    X, y = [], []
+    for idx, cls in enumerate(CLASSES_LIST):
+        cls_dir = os.path.join(DATA_ROOT, cls)
+        for fname in os.listdir(cls_dir):
+            path = os.path.join(cls_dir, fname)
+            seq = extract_frames(path)
+            if len(seq) == SEQUENCE_LENGTH:
+                X.append(seq)
+                y.append(idx)
+    return np.array(X), to_categorical(y)
 
 
-# create a dataset
-features, labels, video_file_paths = create_dataset()
+def main():
+    with mlflow.start_run():
+        # Log hyperparameters
+        params = {
+            "sequence_length": SEQUENCE_LENGTH,
+            "image_height": IMAGE_HEIGHT,
+            "image_width": IMAGE_WIDTH,
+            "num_classes": len(CLASSES_LIST),
+            "batch_size": 4,
+            "epochs": 50,
+            "early_stop_patience": 10,
+        }
+        mlflow.log_params(params)
 
-one_hot_encoded_labels = to_categorical(labels)
+        # Prepare data
+        X, y = create_dataset()
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.25, shuffle=True
+        )
 
-x_train, x_test, y_train, y_test = train_test_split(
-    features, one_hot_encoded_labels, test_size=0.25, shuffle=True
-)
+        # Build model
+        inp = Input((SEQUENCE_LENGTH, IMAGE_HEIGHT, IMAGE_WIDTH, 3))
+        x = ConvLSTM2D(
+            4, (3, 3), activation="tanh", recurrent_dropout=0.2, return_sequences=True
+        )(inp)
+        x = MaxPooling3D((1, 2, 2), padding="same")(x)
+        x = TimeDistributed(Dropout(0.2))(x)
+        x = ConvLSTM2D(
+            8, (3, 3), activation="tanh", recurrent_dropout=0.2, return_sequences=True
+        )(x)
+        x = MaxPooling3D((1, 2, 2), padding="same")(x)
+        x = TimeDistributed(Dropout(0.2))(x)
+        x = ConvLSTM2D(
+            16, (3, 3), activation="tanh", recurrent_dropout=0.2, return_sequences=True
+        )(x)
+        x = MaxPooling3D((1, 2, 2), padding="same")(x)
+        x = TimeDistributed(Dropout(0.2))(x)
+        x = ConvLSTM2D(
+            32, (3, 3), activation="tanh", recurrent_dropout=0.2, return_sequences=True
+        )(x)
+        x = MaxPooling3D((1, 2, 2), padding="same")(x)
+        x = Flatten()(x)
+        out = Dense(len(CLASSES_LIST), activation="softmax")(x)
+        model = Model(inp, out)
 
-# Creating Neural Network
+        # Compile
+        model.compile(
+            loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"]
+        )
 
-input_layer = Input(shape=(SEQUENCE_LENGTH, IMAGE_HEIGHT, IMAGE_WIDTH, 3))
+        # Early stopping
+        es = EarlyStopping(
+            monitor="val_loss",
+            patience=params["early_stop_patience"],
+            mode="min",
+            restore_best_weights=True,
+        )
 
-convlstm_1 = ConvLSTM2D(
-    filters=4,
-    kernel_size=(3, 3),
-    activation="tanh",
-    data_format="channels_last",
-    recurrent_dropout=0.2,
-    return_sequences=True,
-)(input_layer)
-pool1 = MaxPooling3D(pool_size=(1, 2, 2), padding="same", data_format="channels_last")(
-    convlstm_1
-)
-timedistributed_1 = TimeDistributed(Dropout(0.2))(pool1)
+        # Train
+        history = model.fit(
+            X_train,
+            y_train,
+            validation_split=0.2,
+            epochs=params["epochs"],
+            batch_size=params["batch_size"],
+            shuffle=True,
+            callbacks=[es],
+        )
 
-convlstm_2 = ConvLSTM2D(
-    filters=8,
-    kernel_size=(3, 3),
-    activation="tanh",
-    data_format="channels_last",
-    recurrent_dropout=0.2,
-    return_sequences=True,
-)(timedistributed_1)
-pool2 = MaxPooling3D(pool_size=(1, 2, 2), padding="same", data_format="channels_last")(
-    convlstm_2
-)
-timedistributed_2 = TimeDistributed(Dropout(0.2))(pool2)
+        # Log metrics per epoch
+        for step, (l, vl, acc, vac) in enumerate(
+            zip(
+                history.history["loss"],
+                history.history["val_loss"],
+                history.history["accuracy"],
+                history.history["val_accuracy"],
+            )
+        ):
+            mlflow.log_metric("loss", l, step=step)
+            mlflow.log_metric("val_loss", vl, step=step)
+            mlflow.log_metric("accuracy", acc, step=step)
+            mlflow.log_metric("val_accuracy", vac, step=step)
 
-convlstm_3 = ConvLSTM2D(
-    filters=16,
-    kernel_size=(3, 3),
-    activation="tanh",
-    data_format="channels_last",
-    recurrent_dropout=0.2,
-    return_sequences=True,
-)(timedistributed_2)
-pool3 = MaxPooling3D(pool_size=(1, 2, 2), padding="same", data_format="channels_last")(
-    convlstm_3
-)
-timedistributed_3 = TimeDistributed(Dropout(0.2))(pool3)
+        # Evaluate on test set
+        test_loss, test_acc = model.evaluate(X_test, y_test)
+        mlflow.log_metric("test_loss", test_loss)
+        mlflow.log_metric("test_accuracy", test_acc)
 
-convlstm_4 = ConvLSTM2D(
-    filters=32,
-    kernel_size=(3, 3),
-    activation="tanh",
-    data_format="channels_last",
-    recurrent_dropout=0.2,
-    return_sequences=True,
-)(timedistributed_3)
-pool4 = MaxPooling3D(pool_size=(1, 2, 2), padding="same", data_format="channels_last")(
-    convlstm_4
-)
+        # Log the model (includes weights)
+        mlflow.keras.log_model(model, artifact_path="model")
 
-flatten = Flatten()(pool4)
+        # Log loss/validation curves as figures
+        plt.figure()
+        plt.plot(history.history["loss"], label="loss")
+        plt.plot(history.history["val_loss"], label="val_loss")
+        plt.title("Loss vs Val Loss")
+        plt.legend()
+        mlflow.log_figure(plt.gcf(), "loss_vs_val_loss.png")
+        plt.close()
 
-output = Dense(units=len(CLASSES_LIST), activation="softmax")(flatten)
+        plt.figure()
+        plt.plot(history.history["accuracy"], label="accuracy")
+        plt.plot(history.history["val_accuracy"], label="val_accuracy")
+        plt.title("Accuracy vs Val Accuracy")
+        plt.legend()
+        mlflow.log_figure(plt.gcf(), "accuracy_vs_val_accuracy.png")
+        plt.close()
 
-
-model: Model = Model(input_layer, output)
-
-model.summary()
-
-early_stopping_callback = EarlyStopping(
-    monitor="val_loss", patience=10, mode="min", restore_best_weights=True
-)
-
-model.compile(loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"])
-
-history = model.fit(
-    x_train,
-    y_train,
-    epochs=50,
-    batch_size=4,
-    shuffle=True,
-    validation_split=0.2,
-    callbacks=[early_stopping_callback],
-)
-
-model.save("train/models/model.h5")
-
-loss, accuracy = model.evaluate(x_test, y_test)
-
-print("Loss : ", loss)
-print("Accuracy : ", accuracy)
-
-# Plotting loss curve for training and validation set
-
-
-def save_curve(model_training_history, metric_name_1, metric_name_2, plot_name):
-
-    metric1 = model_training_history.history[metric_name_1]
-    metric2 = model_training_history.history[metric_name_2]
-    plt.plot(metric1, color="blue", label=metric_name_1)
-    plt.plot(metric2, color="red", label=metric_name_2)
-    plt.title(str(plot_name))
-    plt.legend()
-    plt.savefig(f"train/plots/{plot_name}.png")
-
-
-save_curve(history, "loss", "val_loss", "Total loss vs Total validation loss")
-
-predictions = model.predict(x_test)
-
-# Assuming predictions are in probability form and you need to convert them to binary labels
-binary_predictions = (predictions > 0.5).astype("int32")
-
-# Calculate precision, recall, and F1 score
-precision, recall, f1_score, _ = precision_recall_fscore_support(
-    y_test, binary_predictions, average=None
-)
-
-print("Precision:", precision)
-print("Recall:", recall)
-print("F1 Score:", f1_score)
+        # Predictions & confusion matrix
+        preds = model.predict(X_test)
+        pred_labels = np.argmax(preds, axis=1)
+        true_labels = np.argmax(y_test, axis=1)
+        cm = confusion_matrix(true_labels, pred_labels)
+        plt.figure(figsize=(8, 6))
+        sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
+        plt.xlabel("Predicted")
+        plt.ylabel("True")
+        plt.title("Confusion Matrix")
+        mlflow.log_figure(plt.gcf(), "confusion_matrix.png")
+        plt.close()
 
 
-predicted_labels = np.argmax(predictions, axis=1)
-true_labels = np.argmax(y_test, axis=1)  # Assuming test_Y is one-hot encoded
-conf_matrix = confusion_matrix(true_labels, predicted_labels)
-
-plt.figure(figsize=(8, 6))
-sns.heatmap(conf_matrix, annot=True, fmt="d", cmap="Blues")
-plt.xlabel("Predicted labels")
-plt.ylabel("True labels")
-plt.title("Confusion Matrix")
-plt.savefig("train/plots/confusion_matrix.png")
+if __name__ == "__main__":
+    main()
