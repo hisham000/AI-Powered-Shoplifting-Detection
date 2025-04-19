@@ -1,13 +1,11 @@
-import os
-
 DIM = 64
 IMAGE_HEIGHT = DIM
 IMAGE_WIDTH = DIM
 SEQUENCE_LENGTH = 30
 CLASSES_LIST = ["0", "1"]
-DATA_ROOT = "data-processing/dataset"
+DATA_ROOT = "data-processing/shoplifting/dataset"
 BATCH_SIZE = 4
 EPOCHS = 50
 EARLY_STOP_PATIENCE = 10
-TRACKING_URI = f"file://{os.path.abspath('mlruns')}"
+TRACKING_URI = "mlruns"
 EXPERIMENT_NAME = "video_classification_convlstm"

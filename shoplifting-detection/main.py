@@ -1,16 +1,14 @@
 import io
 import os
 import tempfile
+import uuid
 from contextlib import asynccontextmanager
+from datetime import datetime
 
 import cv2
 import mlflow
 import mlflow.keras
 import numpy as np
-from fastapi import FastAPI, File, HTTPException, UploadFile
-from mlflow.tracking import MlflowClient
-from PIL import Image, UnidentifiedImageError
-
 from config import (
     EXPERIMENT_NAME,
     IMAGE_HEIGHT,
@@ -18,11 +16,67 @@ from config import (
     SEQUENCE_LENGTH,
     TRACKING_URI,
 )
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from mlflow.tracking import MlflowClient
+from PIL import Image, UnidentifiedImageError
+
+# Set path to the unlabeled directory
+# Check if we're running in Docker (the Docker directory structure) or locally
+if os.path.exists("/data-processing/shoplifting/dataset/unlabeled"):
+    # Docker path
+    UNLABELED_DIR = "/data-processing/shoplifting/dataset/unlabeled"
+else:
+    # Local development path
+    UNLABELED_DIR = os.path.join(
+        "..", "data-processing", "shoplifting", "dataset", "unlabeled"
+    )
+
+
+# Function to ensure unlabeled directory exists
+def ensure_unlabeled_dir_exists():
+    os.makedirs(UNLABELED_DIR, exist_ok=True)
+    return UNLABELED_DIR
+
+
+# Function to save uploaded file to unlabeled directory with unique name
+def save_uploaded_file(file_content: bytes, original_filename: str, content_type: str):
+    # Create unique filename with timestamp and UUID
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    unique_id = str(uuid.uuid4())[:8]
+
+    # Get file extension from original filename or content type
+    if "." in original_filename:
+        extension = original_filename.split(".")[-1]
+    elif content_type.startswith("image/"):
+        extension = "jpg" if "jpeg" in content_type else content_type.split("/")[-1]
+    elif content_type.startswith("video/"):
+        extension = "mp4" if "mp4" in content_type else content_type.split("/")[-1]
+    else:
+        extension = "bin"  # fallback
+
+    # Create the new filename
+    new_filename = f"{timestamp}_{unique_id}.{extension}"
+
+    # Ensure directory exists
+    save_dir = ensure_unlabeled_dir_exists()
+
+    # Full path to save file
+    file_path = os.path.join(save_dir, new_filename)
+
+    # Save file
+    with open(file_path, "wb") as f:
+        f.write(file_content)
+
+    return file_path
 
 
 # Function to retrieve the best model from MLflow based on test accuracy
 def get_best_model():
-    mlflow.set_tracking_uri(TRACKING_URI)
+    # Set tracking URI to work both locally and in Docker
+    mlflow_dir = os.path.join(os.getcwd(), TRACKING_URI)
+    tracking_uri = f"file://{mlflow_dir}"
+    mlflow.set_tracking_uri(tracking_uri)
+
     client = MlflowClient()
     exp = client.get_experiment_by_name(EXPERIMENT_NAME)
     if exp is None:
@@ -34,9 +88,15 @@ def get_best_model():
     )
     if not runs:
         raise RuntimeError("No runs found for experiment")
+
+    # Get model from the best run
     best_run_id = runs[0].info.run_id
-    model_uri = f"runs:/{best_run_id}/model"
-    return mlflow.keras.load_model(model_uri)
+
+    direct_path = os.path.join(
+        mlflow_dir, exp.experiment_id, best_run_id, "artifacts/model"
+    )
+
+    return mlflow.keras.load_model(direct_path)
 
 
 # Utility: extract a fixed number of frames from video bytes
@@ -77,6 +137,8 @@ def extract_frames_from_video(video_bytes: bytes) -> np.ndarray:
 async def lifespan(app: FastAPI):
     try:
         app.state.target_model = get_best_model()
+        # Ensure unlabeled directory exists on startup
+        ensure_unlabeled_dir_exists()
     except Exception as e:
         raise RuntimeError(f"Failed to load model on startup: {e}")
     yield
@@ -99,6 +161,15 @@ async def predict(file: UploadFile = File(...)) -> dict[str, int]:
 
     content_type = file.content_type or ""
     data = await file.read()
+
+    # Save the uploaded file to unlabeled directory
+    try:
+        if file.filename:
+            # Save the file with its original name
+            save_uploaded_file(data, file.filename, content_type)
+    except Exception as e:
+        # Log the error but don't fail the prediction
+        print(f"Error saving file to unlabeled directory: {e}")
 
     # Handle image uploads
     if content_type.startswith("image/"):
