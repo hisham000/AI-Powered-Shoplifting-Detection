@@ -6,6 +6,18 @@ import mlflow
 import mlflow.keras
 import numpy as np
 import seaborn as sns
+from config import (
+    BATCH_SIZE,
+    CLASSES_LIST,
+    DATA_ROOT,
+    EARLY_STOP_PATIENCE,
+    EPOCHS,
+    EXPERIMENT_NAME,
+    IMAGE_HEIGHT,
+    IMAGE_WIDTH,
+    SEQUENCE_LENGTH,
+    TRACKING_URI,
+)
 from sklearn.metrics import confusion_matrix  # type: ignore[import]
 from sklearn.model_selection import train_test_split  # type: ignore[import]
 from tensorflow.keras.callbacks import EarlyStopping  # type: ignore
@@ -20,19 +32,6 @@ from tensorflow.keras.layers import (  # type: ignore
 )
 from tensorflow.keras.models import Model  # type: ignore
 from tensorflow.keras.utils import to_categorical  # type: ignore
-
-from config import (
-    BATCH_SIZE,
-    CLASSES_LIST,
-    DATA_ROOT,
-    EARLY_STOP_PATIENCE,
-    EPOCHS,
-    EXPERIMENT_NAME,
-    IMAGE_HEIGHT,
-    IMAGE_WIDTH,
-    SEQUENCE_LENGTH,
-    TRACKING_URI,
-)
 
 # MLflow setup
 mlflow.set_tracking_uri(TRACKING_URI)

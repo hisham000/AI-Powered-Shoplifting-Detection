@@ -8,9 +8,6 @@ import cv2
 import mlflow
 import mlflow.keras
 import numpy as np
-from fastapi import FastAPI, File, HTTPException, UploadFile
-from mlflow.tracking import MlflowClient
-
 from config import (
     EXPERIMENT_NAME,
     IMAGE_HEIGHT,
@@ -18,6 +15,8 @@ from config import (
     SEQUENCE_LENGTH,
     TRACKING_URI,
 )
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from mlflow.tracking import MlflowClient
 
 # Set path to the dataset directory and unsupervised directories
 # Check if we're running in Docker (the Docker directory structure) or locally
