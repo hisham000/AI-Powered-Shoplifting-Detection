@@ -1,4 +1,3 @@
-import io
 import os
 import tempfile
 import uuid
@@ -9,6 +8,9 @@ import cv2
 import mlflow
 import mlflow.keras
 import numpy as np
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from mlflow.tracking import MlflowClient
+
 from config import (
     EXPERIMENT_NAME,
     IMAGE_HEIGHT,
@@ -16,18 +18,15 @@ from config import (
     SEQUENCE_LENGTH,
     TRACKING_URI,
 )
-from fastapi import FastAPI, File, HTTPException, UploadFile
-from mlflow.tracking import MlflowClient
-from PIL import Image, UnidentifiedImageError
 
 # Set path to the dataset directory and unsupervised directories
 # Check if we're running in Docker (the Docker directory structure) or locally
-if os.path.exists("data"):
-    # Docker path
-    DATASET_DIR = "data"
+if os.path.exists("/data"):
+    # Docker path - use absolute path matching the Docker volume
+    DATASET_DIR = "/data"
 else:
-    # Local development path
-    DATASET_DIR = os.path.join("data")
+    # Local development path - assuming local dev is relative to current dir
+    DATASET_DIR = "data"
 
 # Define paths for unsupervised subdirectories (0 and 1)
 UNSUPERVISED_DIR = os.path.join(DATASET_DIR, "unsupervised")
@@ -37,9 +36,14 @@ UNSUPERVISED_1_DIR = os.path.join(UNSUPERVISED_DIR, "1")
 
 # Function to ensure directories exist
 def ensure_directories_exist():
-    os.makedirs(UNSUPERVISED_0_DIR, exist_ok=True)
-    os.makedirs(UNSUPERVISED_1_DIR, exist_ok=True)
-    return UNSUPERVISED_DIR
+    try:
+        os.makedirs(UNSUPERVISED_0_DIR, exist_ok=True)
+        os.makedirs(UNSUPERVISED_1_DIR, exist_ok=True)
+        return UNSUPERVISED_DIR
+    except Exception as e:
+        print(f"Error with directory permissions: {str(e)}")
+        print(f"Attempted to use directory: {UNSUPERVISED_DIR}")
+        raise
 
 
 # Function to save uploaded file to appropriate directory based on prediction
@@ -169,27 +173,21 @@ async def predict(file: UploadFile = File(...)) -> dict[str, int]:
         raise HTTPException(status_code=500, detail="Model not loaded")
 
     content_type = file.content_type or ""
-    data = await file.read()
 
-    # Handle image uploads
-    if content_type.startswith("image/"):
-        try:
-            image = Image.open(io.BytesIO(data)).convert("RGB")
-        except UnidentifiedImageError:
-            raise HTTPException(status_code=400, detail="Invalid image file.")
-        image = image.resize((IMAGE_WIDTH, IMAGE_HEIGHT))
-        arr = np.array(image) / 255.0
-        arr = np.expand_dims(arr, axis=0)
-
-    # Handle video uploads
-    elif content_type.startswith("video/"):
-        arr = extract_frames_from_video(data)
-
-    else:
+    # Only allow video uploads
+    if not content_type.startswith("video/"):
         raise HTTPException(
             status_code=415,
-            detail="Unsupported media type. Upload an image or short video.",
+            detail="Unsupported media type. Only video uploads are allowed.",
         )
+
+    data = await file.read()
+
+    # Process video upload
+    try:
+        arr = extract_frames_from_video(data)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error processing video: {str(e)}")
 
     # Run prediction
     try:

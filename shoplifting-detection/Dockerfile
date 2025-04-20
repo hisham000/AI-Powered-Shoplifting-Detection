@@ -17,15 +17,15 @@ RUN pip install opencv-python-headless
 COPY . .
 
 # Create directory structure for unsupervised data
-RUN mkdir -p /shoplifting-detection/data/unsupervised/0
-RUN mkdir -p /shoplifting-detection/data/unsupervised/1
+RUN mkdir -p /data/unsupervised/0
+RUN mkdir -p /data/unsupervised/1
 RUN mkdir -p /app/mlruns
 
 # Expose port 8000 for the uvicorn server
 EXPOSE 8000
 
 # Set volumes for unsupervised data and mlruns
-VOLUME ["/shoplifting-detection/data/unsupervised", "/app/mlruns"]
+VOLUME ["/data/unsupervised", "/app/mlruns"]
 
 # Run main.py when the container launches
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0"]
