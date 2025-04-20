@@ -11,7 +11,7 @@ print("Path to dataset files:", path)
 
 
 ROOT_DIR = f"{path}/DCSASS Dataset/Shoplifting"
-DESTINATION_ROOT = "data-processing/shoplifting/dataset"
+DESTINATION_ROOT = "shoplifting-detection/data"
 DESTINATION_PATH_0 = f"{DESTINATION_ROOT}/0"
 DESTINATION_PATH_1 = f"{DESTINATION_ROOT}/1"
 FOLDER_NAMES = ["0", "1"]
