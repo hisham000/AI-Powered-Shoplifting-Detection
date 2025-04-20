@@ -4,10 +4,7 @@ FROM python:3.12-slim
 # Set working directory
 WORKDIR /app
 
-# Create directory structure for unlabeled data
-RUN mkdir -p /data-processing/shoplifting/dataset/unlabeled
-
-# Copy requirements file first for better layer caching
+# Copy the requirements file into the container
 COPY requirements.txt .
 
 # Install dependencies
@@ -16,14 +13,19 @@ RUN pip install --no-cache-dir -r requirements.txt
 # instead of `pip install opencv-python`
 RUN pip install opencv-python-headless
 
-# Copy the rest of the application
+# Copy the rest of the application code into the container
 COPY . .
+
+# Create directory structure for unsupervised data
+RUN mkdir -p /shoplifting-detection/data/unsupervised/0
+RUN mkdir -p /shoplifting-detection/data/unsupervised/1
+RUN mkdir -p /app/mlruns
 
 # Expose port 8000 for the uvicorn server
 EXPOSE 8000
 
-# Set volume for unlabeled data
-VOLUME ["/data-processing/shoplifting/dataset/unlabeled"]
+# Set volumes for unsupervised data and mlruns
+VOLUME ["/shoplifting-detection/data/unsupervised", "/app/mlruns"]
 
 # Run main.py when the container launches
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0"]

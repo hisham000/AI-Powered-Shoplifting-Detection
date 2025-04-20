@@ -179,6 +179,7 @@ models/
 
 # datasets
 dataset/
+data/
 
 # mlruns
 mlruns/

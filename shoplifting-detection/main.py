@@ -20,26 +20,32 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from mlflow.tracking import MlflowClient
 from PIL import Image, UnidentifiedImageError
 
-# Set path to the unlabeled directory
+# Set path to the dataset directory and unsupervised directories
 # Check if we're running in Docker (the Docker directory structure) or locally
-if os.path.exists("/data-processing/shoplifting/dataset/unlabeled"):
+if os.path.exists("data"):
     # Docker path
-    UNLABELED_DIR = "/data-processing/shoplifting/dataset/unlabeled"
+    DATASET_DIR = "data"
 else:
     # Local development path
-    UNLABELED_DIR = os.path.join(
-        "..", "data-processing", "shoplifting", "dataset", "unlabeled"
-    )
+    DATASET_DIR = os.path.join("data")
+
+# Define paths for unsupervised subdirectories (0 and 1)
+UNSUPERVISED_DIR = os.path.join(DATASET_DIR, "unsupervised")
+UNSUPERVISED_0_DIR = os.path.join(UNSUPERVISED_DIR, "0")
+UNSUPERVISED_1_DIR = os.path.join(UNSUPERVISED_DIR, "1")
 
 
-# Function to ensure unlabeled directory exists
-def ensure_unlabeled_dir_exists():
-    os.makedirs(UNLABELED_DIR, exist_ok=True)
-    return UNLABELED_DIR
+# Function to ensure directories exist
+def ensure_directories_exist():
+    os.makedirs(UNSUPERVISED_0_DIR, exist_ok=True)
+    os.makedirs(UNSUPERVISED_1_DIR, exist_ok=True)
+    return UNSUPERVISED_DIR
 
 
-# Function to save uploaded file to unlabeled directory with unique name
-def save_uploaded_file(file_content: bytes, original_filename: str, content_type: str):
+# Function to save uploaded file to appropriate directory based on prediction
+def save_uploaded_file(
+    file_content: bytes, original_filename: str, content_type: str, prediction: int
+):
     # Create unique filename with timestamp and UUID
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     unique_id = str(uuid.uuid4())[:8]
@@ -57,11 +63,14 @@ def save_uploaded_file(file_content: bytes, original_filename: str, content_type
     # Create the new filename
     new_filename = f"{timestamp}_{unique_id}.{extension}"
 
-    # Ensure directory exists
-    save_dir = ensure_unlabeled_dir_exists()
+    # Ensure directories exist
+    ensure_directories_exist()
+
+    # Determine target directory based on prediction
+    target_dir = UNSUPERVISED_0_DIR if prediction == 0 else UNSUPERVISED_1_DIR
 
     # Full path to save file
-    file_path = os.path.join(save_dir, new_filename)
+    file_path = os.path.join(target_dir, new_filename)
 
     # Save file
     with open(file_path, "wb") as f:
@@ -137,8 +146,8 @@ def extract_frames_from_video(video_bytes: bytes) -> np.ndarray:
 async def lifespan(app: FastAPI):
     try:
         app.state.target_model = get_best_model()
-        # Ensure unlabeled directory exists on startup
-        ensure_unlabeled_dir_exists()
+        # Ensure directories exist on startup
+        ensure_directories_exist()
     except Exception as e:
         raise RuntimeError(f"Failed to load model on startup: {e}")
     yield
@@ -161,15 +170,6 @@ async def predict(file: UploadFile = File(...)) -> dict[str, int]:
 
     content_type = file.content_type or ""
     data = await file.read()
-
-    # Save the uploaded file to unlabeled directory
-    try:
-        if file.filename:
-            # Save the file with its original name
-            save_uploaded_file(data, file.filename, content_type)
-    except Exception as e:
-        # Log the error but don't fail the prediction
-        print(f"Error saving file to unlabeled directory: {e}")
 
     # Handle image uploads
     if content_type.startswith("image/"):
@@ -196,5 +196,15 @@ async def predict(file: UploadFile = File(...)) -> dict[str, int]:
         preds = model.predict(arr)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Prediction error: {e}")
+
     label = int(np.argmax(preds, axis=1)[0])
+
+    # Save the uploaded file to the appropriate directory based on prediction
+    try:
+        if file.filename:
+            save_uploaded_file(data, file.filename, content_type, label)
+    except Exception as e:
+        # Log the error but don't fail the prediction
+        print(f"Error saving file to unsupervised directory: {e}")
+
     return {"prediction": label}
