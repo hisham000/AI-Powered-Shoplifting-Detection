@@ -25,4 +25,4 @@ VOLUME ["/data/unsupervised", "/app/mlruns"]
 EXPOSE 5001
 
 # Command to run when container starts
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5001"]
