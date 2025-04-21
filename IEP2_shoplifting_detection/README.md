@@ -55,7 +55,7 @@ The training container processes video data and trains the shoplifting detection
 
 ```bash
 # Build the training container
-docker build -t shoplifting-detection-training ./train
+docker build -t shoplifting-detection-training -f Dockerfile.train .
 
 # Run the container with mounted volumes for data and MLflow tracking
 docker run --rm \
@@ -70,14 +70,12 @@ The prediction container serves the trained model through a RESTful API endpoint
 
 ```bash
 # Build the prediction container
-docker build -t shoplifting-detection-predicting ./predict
+docker build -t shoplifting-detection-predicting -f Dockerfile.predict .
 
 # Run the container with mounted volumes and exposed port
 docker run --rm \
   -p 5002:5002 \
-  -v $(pwd)/data/unsupervised:/data/unsupervised \
-  -v $(pwd)/mlruns:/app/mlruns \
-  shoplifting-detection-predicting
+  -v $(pwd)/data/unsupervised:/data/unsupervised
 ```
 
 ## API Endpoints
