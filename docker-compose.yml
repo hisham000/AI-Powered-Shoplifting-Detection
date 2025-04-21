@@ -32,6 +32,7 @@ services:
       - '5002'
     volumes:
       - ./IEP2_shoplifting_detection/data/unsupervised:/data/unsupervised
+      - ./IEP2_shoplifting_detection/mlruns:/app/mlruns
 
   iep3:
     build:
