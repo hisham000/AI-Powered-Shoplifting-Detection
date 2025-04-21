@@ -179,5 +179,6 @@ cython_debug/
 # --- Ultralytics / training outputs ---------------------------------
 runs/
 mlruns/
+
 # --- PyTorch weights & checkpoints ---------------------------------
-*.pt      
+*.pt
