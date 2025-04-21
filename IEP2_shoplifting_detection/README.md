@@ -75,7 +75,9 @@ docker build -t shoplifting-detection-predicting -f Dockerfile.predict .
 # Run the container with mounted volumes and exposed port
 docker run --rm \
   -p 5002:5002 \
-  -v $(pwd)/data/unsupervised:/data/unsupervised
+  -v $(pwd)/data/unsupervised:/data/unsupervised \
+  -v $(pwd)/mlruns:/app/mlruns \
+  shoplifting-detection-predicting
 ```
 
 ## API Endpoints
