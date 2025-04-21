@@ -12,15 +12,38 @@ import cv2
 import mlflow
 import mlflow.keras
 import numpy as np
-from fastapi import FastAPI, File, HTTPException, UploadFile
-from mlflow.tracking import MlflowClient
-
 from config import (
     EXPERIMENT_NAME,
     IMAGE_HEIGHT,
     IMAGE_WIDTH,
     SEQUENCE_LENGTH,
     TRACKING_URI,
+)
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from mlflow.tracking import MlflowClient
+from prometheus_client import Counter, Gauge, Histogram, Summary
+from prometheus_fastapi_instrumentator import Instrumentator
+
+# Prometheus metrics
+PREDICTION_COUNTER = Counter(
+    "iep2_predictions_total", "Number of shoplifting prediction requests processed"
+)
+POSITIVE_DETECTION_COUNTER = Counter(
+    "iep2_shoplifting_detections_total", "Number of positive shoplifting detections"
+)
+NEGATIVE_DETECTION_COUNTER = Counter(
+    "iep2_normal_behavior_detections_total", "Number of normal behavior detections"
+)
+INFERENCE_TIME = Histogram(
+    "iep2_inference_seconds",
+    "Time spent on inference",
+    buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 2.0, 5.0],
+)
+CONFIDENCE_GAUGE = Gauge(
+    "iep2_shoplifting_confidence", "Last shoplifting prediction confidence score"
+)
+MODEL_LOADING_TIME = Summary(
+    "iep2_model_loading_seconds", "Time taken to load the model"
 )
 
 # Set path to the dataset directory and unsupervised directories
@@ -89,31 +112,33 @@ def save_uploaded_file(
 
 # Function to retrieve the best model from MLflow based on test accuracy
 def get_best_model():
-    # Set tracking URI to work both locally and in Docker
-    mlflow_dir = os.path.join(os.getcwd(), TRACKING_URI)
-    tracking_uri = f"file://{mlflow_dir}"
-    mlflow.set_tracking_uri(tracking_uri)
+    # Start timing model loading
+    with MODEL_LOADING_TIME.time():
+        # Set tracking URI to work both locally and in Docker
+        mlflow_dir = os.path.join(os.getcwd(), TRACKING_URI)
+        tracking_uri = f"file://{mlflow_dir}"
+        mlflow.set_tracking_uri(tracking_uri)
 
-    client = MlflowClient()
-    exp = client.get_experiment_by_name(EXPERIMENT_NAME)
-    if exp is None:
-        raise RuntimeError(f"Experiment '{EXPERIMENT_NAME}' not found")
-    runs = client.search_runs(
-        [exp.experiment_id],
-        order_by=["metrics.test_accuracy DESC"],
-        max_results=1,
-    )
-    if not runs:
-        raise RuntimeError("No runs found for experiment")
+        client = MlflowClient()
+        exp = client.get_experiment_by_name(EXPERIMENT_NAME)
+        if exp is None:
+            raise RuntimeError(f"Experiment '{EXPERIMENT_NAME}' not found")
+        runs = client.search_runs(
+            [exp.experiment_id],
+            order_by=["metrics.test_accuracy DESC"],
+            max_results=1,
+        )
+        if not runs:
+            raise RuntimeError("No runs found for experiment")
 
-    # Get model from the best run
-    best_run_id = runs[0].info.run_id
+        # Get model from the best run
+        best_run_id = runs[0].info.run_id
 
-    direct_path = os.path.join(
-        mlflow_dir, exp.experiment_id, best_run_id, "artifacts/model"
-    )
+        direct_path = os.path.join(
+            mlflow_dir, exp.experiment_id, best_run_id, "artifacts/model"
+        )
 
-    return mlflow.keras.load_model(direct_path)
+        return mlflow.keras.load_model(direct_path)
 
 
 # Utility: extract a fixed number of frames from video bytes
@@ -164,6 +189,9 @@ async def lifespan(app: FastAPI):
 # Create FastAPI instance
 app = FastAPI(lifespan=lifespan)
 
+# Set up Prometheus instrumentation
+Instrumentator().instrument(app).expose(app)
+
 
 @app.get("/health")
 def health_check() -> dict[str, str]:
@@ -172,6 +200,9 @@ def health_check() -> dict[str, str]:
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)) -> dict[str, int]:
+    # Increment prediction counter
+    PREDICTION_COUNTER.inc()
+
     model = app.state.target_model
     if model is None:
         raise HTTPException(status_code=500, detail="Model not loaded")
@@ -193,13 +224,24 @@ async def predict(file: UploadFile = File(...)) -> dict[str, int]:
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error processing video: {str(e)}")
 
-    # Run prediction
+    # Run prediction with timing
     try:
-        preds = model.predict(arr)
+        with INFERENCE_TIME.time():
+            preds = model.predict(arr)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Prediction error: {e}")
 
     label = int(np.argmax(preds, axis=1)[0])
+    confidence = float(preds[0][label])  # Extract confidence score for the prediction
+
+    # Update metrics based on prediction
+    if label == 1:  # Shoplifting detected
+        POSITIVE_DETECTION_COUNTER.inc()
+    else:  # Normal behavior detected
+        NEGATIVE_DETECTION_COUNTER.inc()
+
+    # Update confidence gauge
+    CONFIDENCE_GAUGE.set(confidence)
 
     # Save the uploaded file to the appropriate directory based on prediction
     try:

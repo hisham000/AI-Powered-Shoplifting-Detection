@@ -22,7 +22,7 @@ RUN mkdir -p /app/mlruns
 VOLUME ["/data/unsupervised", "/app/mlruns"]
 
 # Expose port for the FastAPI application
-EXPOSE 5001
+EXPOSE 5002
 
 # Command to run when container starts
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5001"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5002"]

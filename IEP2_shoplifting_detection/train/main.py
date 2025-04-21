@@ -1,10 +1,9 @@
 import gc
 import os
 import resource
+import shutil
 import sys
 import traceback
-import shutil
-from typing import Dict, List, Tuple, Optional
 
 # Force unbuffered output
 os.environ["PYTHONUNBUFFERED"] = "1"
@@ -15,6 +14,19 @@ import mlflow
 import mlflow.keras
 import numpy as np
 import seaborn as sns
+from config import (
+    BATCH_SIZE,
+    CLASSES_LIST,
+    DATA_ROOT,
+    EARLY_STOP_PATIENCE,
+    EPOCHS,
+    EXPERIMENT_NAME,
+    IMAGE_HEIGHT,
+    IMAGE_WIDTH,
+    SEQUENCE_LENGTH,
+    TRACKING_URI,
+)
+from load_data import load_data
 from sklearn.metrics import confusion_matrix  # type: ignore[import]
 from sklearn.model_selection import train_test_split  # type: ignore[import]
 from tensorflow.keras.callbacks import EarlyStopping  # type: ignore
@@ -29,20 +41,6 @@ from tensorflow.keras.layers import (  # type: ignore
 )
 from tensorflow.keras.models import Model  # type: ignore
 from tensorflow.keras.utils import to_categorical  # type: ignore
-
-from config import (
-    BATCH_SIZE,
-    CLASSES_LIST,
-    DATA_ROOT,
-    EARLY_STOP_PATIENCE,
-    EPOCHS,
-    EXPERIMENT_NAME,
-    IMAGE_HEIGHT,
-    IMAGE_WIDTH,
-    SEQUENCE_LENGTH,
-    TRACKING_URI,
-)
-from load_data import load_data
 
 
 def print_memory_usage(message=""):
@@ -159,7 +157,7 @@ def create_dataset():
 def cleanup_mlruns(experiment_name: str) -> None:
     """
     Delete all models except the one with the highest accuracy.
-    
+
     Args:
         experiment_name: Name of the experiment to clean up
     """
@@ -168,18 +166,20 @@ def cleanup_mlruns(experiment_name: str) -> None:
         # Get the experiment ID
         experiment = mlflow.get_experiment_by_name(experiment_name)
         if not experiment:
-            print(f"Experiment {experiment_name} not found, skipping cleanup", flush=True)
+            print(
+                f"Experiment {experiment_name} not found, skipping cleanup", flush=True
+            )
             return
-            
+
         experiment_id = experiment.experiment_id
         print(f"Found experiment with ID: {experiment_id}", flush=True)
-        
+
         # Get all runs for this experiment
         runs = mlflow.search_runs(experiment_ids=[experiment_id])
         if runs.empty:
             print("No runs found for the experiment, skipping cleanup", flush=True)
             return
-            
+
         # Find the run with the highest accuracy
         if "metrics.test_accuracy" in runs.columns:
             accuracy_col = "metrics.test_accuracy"
@@ -190,36 +190,44 @@ def cleanup_mlruns(experiment_name: str) -> None:
         else:
             print("No accuracy metric found in runs, skipping cleanup", flush=True)
             return
-            
+
         # Sort by accuracy (descending) and get the best run
         runs_sorted = runs.sort_values(by=accuracy_col, ascending=False)
         best_run_id = runs_sorted.iloc[0]["run_id"]
         best_accuracy = runs_sorted.iloc[0][accuracy_col]
-        
-        print(f"Best run ID: {best_run_id} with accuracy: {best_accuracy:.4f}", flush=True)
-        
+
+        print(
+            f"Best run ID: {best_run_id} with accuracy: {best_accuracy:.4f}", flush=True
+        )
+
         # Get mlruns folder path
         mlruns_dir = os.path.join(os.getcwd(), "mlruns")
         if not os.path.exists(mlruns_dir):
-            print(f"MLflow runs directory not found at {mlruns_dir}, skipping cleanup", flush=True)
+            print(
+                f"MLflow runs directory not found at {mlruns_dir}, skipping cleanup",
+                flush=True,
+            )
             return
-            
+
         # Get experiment directory
         exp_dir = os.path.join(mlruns_dir, experiment_id)
         if not os.path.exists(exp_dir):
-            print(f"Experiment directory not found at {exp_dir}, skipping cleanup", flush=True)
+            print(
+                f"Experiment directory not found at {exp_dir}, skipping cleanup",
+                flush=True,
+            )
             return
-            
+
         # Count how many runs we'll delete
         delete_count = 0
         total_size = 0
-        
+
         for run_folder in os.listdir(exp_dir):
             run_path = os.path.join(exp_dir, run_folder)
             # Skip non-directories and the best run
             if not os.path.isdir(run_path) or run_folder == best_run_id:
                 continue
-                
+
             # Calculate size before deletion
             folder_size = sum(
                 os.path.getsize(os.path.join(dirpath, filename))
@@ -228,14 +236,22 @@ def cleanup_mlruns(experiment_name: str) -> None:
             )
             total_size += folder_size
             delete_count += 1
-            
+
             # Delete the run directory
             shutil.rmtree(run_path)
-            print(f"Deleted run {run_folder} ({folder_size / (1024*1024):.2f} MB)", flush=True)
-            
-        print(f"Cleanup complete. Deleted {delete_count} runs, saved {total_size / (1024*1024):.2f} MB", flush=True)
-        print(f"Kept best run {best_run_id} with accuracy {best_accuracy:.4f}", flush=True)
-        
+            print(
+                f"Deleted run {run_folder} ({folder_size / (1024*1024):.2f} MB)",
+                flush=True,
+            )
+
+        print(
+            f"Cleanup complete. Deleted {delete_count} runs, saved {total_size / (1024*1024):.2f} MB",
+            flush=True,
+        )
+        print(
+            f"Kept best run {best_run_id} with accuracy {best_accuracy:.4f}", flush=True
+        )
+
     except Exception as e:
         print(f"Error during cleanup: {e}", flush=True)
         traceback.print_exc()
