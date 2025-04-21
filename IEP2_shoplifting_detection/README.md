@@ -74,7 +74,7 @@ docker build -t shoplifting-detection-predicting ./predict
 
 # Run the container with mounted volumes and exposed port
 docker run --rm \
-  -p 5001:5001 \
+  -p 5002:5002 \
   -v $(pwd)/data/unsupervised:/data/unsupervised \
   -v $(pwd)/mlruns:/app/mlruns \
   shoplifting-detection-predicting
@@ -116,7 +116,7 @@ Once the prediction service is running, you can test it using curl:
 
 ```bash
 curl -X POST \
-  http://localhost:5001/predict \
+  http://localhost:5002/predict \
   -F "file=@/path/to/your/testvideo.mp4" \
   -H "Content-Type: multipart/form-data"
 ```
