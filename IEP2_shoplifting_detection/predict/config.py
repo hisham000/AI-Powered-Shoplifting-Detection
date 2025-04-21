@@ -7,5 +7,5 @@ DATA_ROOT = "/data"
 BATCH_SIZE = 4
 EPOCHS = 50
 EARLY_STOP_PATIENCE = 10
-TRACKING_URI = "mlruns"
+TRACKING_URI = "/app/mlruns"
 EXPERIMENT_NAME = "video_classification_convlstm"
