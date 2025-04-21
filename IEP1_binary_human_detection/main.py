@@ -12,6 +12,25 @@ import numpy as np
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.responses import JSONResponse
 from openvino import Core  # type: ignore[import]
+from prometheus_client import Counter, Gauge, Histogram, Summary
+from prometheus_fastapi_instrumentator import Instrumentator
+
+# Prometheus metrics
+PREDICTION_COUNTER = Counter(
+    "iep1_predictions_total", "Number of prediction requests processed"
+)
+HUMAN_DETECTION_COUNTER = Counter(
+    "iep1_human_detections_total", "Number of human detections made"
+)
+INFERENCE_TIME = Histogram(
+    "iep1_inference_seconds",
+    "Time spent on inference",
+    buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0],
+)
+CONFIDENCE_GAUGE = Gauge("iep1_detection_confidence", "Last detection confidence score")
+MODEL_LOADING_TIME = Summary(
+    "iep1_model_loading_seconds", "Time taken to load the model"
+)
 
 # Path to model (inside container)
 MODEL_DIR = "models"
@@ -92,19 +111,23 @@ async def lifespan(app: FastAPI):
             f"Model file not found and could not be downloaded: {MODEL_XML}"
         )
 
-    # Load model
-    print(f"Loading model from {MODEL_XML}...")
-    ie = Core()
-    model = ie.read_model(model=MODEL_XML)
-    compiled_model = ie.compile_model(model=model, device_name="CPU")
-    input_layer = compiled_model.input(0)
-    print("Model loaded successfully")
+    # Load model with timing
+    with MODEL_LOADING_TIME.time():
+        print(f"Loading model from {MODEL_XML}...")
+        ie = Core()
+        model = ie.read_model(model=MODEL_XML)
+        compiled_model = ie.compile_model(model=model, device_name="CPU")
+        input_layer = compiled_model.input(0)
+        print("Model loaded successfully")
 
     yield
     # Cleanup operations can go here (if needed when app shuts down)
 
 
 app = FastAPI(title="Human Detection API", lifespan=lifespan)
+
+# Set up Prometheus instrumentation
+Instrumentator().instrument(app).expose(app)
 
 
 @app.get("/health")
@@ -143,8 +166,9 @@ def process_frame(
     input_blob = input_blob.transpose(2, 0, 1)[np.newaxis, :]
     input_blob = input_blob.astype(np.float32)
 
-    # Inference
-    results = compiled_model([input_blob])[compiled_model.output(0)]
+    # Inference with timing
+    with INFERENCE_TIME.time():
+        results = compiled_model([input_blob])[compiled_model.output(0)]
 
     # Post-process
     human_detected = False
@@ -155,6 +179,11 @@ def process_frame(
         if conf > threshold:
             human_detected = True
             highest_conf = max(highest_conf, conf)
+
+    # Update metrics
+    if human_detected:
+        HUMAN_DETECTION_COUNTER.inc()
+        CONFIDENCE_GAUGE.set(highest_conf)
 
     return {
         "human_detected": human_detected,
@@ -183,6 +212,9 @@ async def predict(
         - For videos: {"results": [{"frame": int, "human_detected": bool, "confidence": float}, ...],
                       "summary": {"human_detected": bool, "highest_confidence": float}}
     """
+    # Increment prediction counter
+    PREDICTION_COUNTER.inc()
+
     # Save upload to a temp file
     if file.filename:
         suffix = Path(file.filename).suffix.lower()
@@ -244,6 +276,10 @@ async def predict(
             frame_idx += 1
 
         cap.release()
+
+        # Update confidence gauge with highest confidence from video
+        if any_human_detected:
+            CONFIDENCE_GAUGE.set(highest_confidence)
 
         # Return combined results for video
         return JSONResponse(

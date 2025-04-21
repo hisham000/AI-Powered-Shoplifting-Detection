@@ -29,10 +29,10 @@ COPY ./main.py ./main.py
 VOLUME ["/workspace/models"]
 
 # Expose FastAPI port
-EXPOSE 5003
+EXPOSE 5001
 
 # Switch back to default user (optional, for security)
 USER openvino
 
 # Run FastAPI app
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5003"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5001"]
