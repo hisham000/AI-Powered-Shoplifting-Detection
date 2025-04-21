@@ -37,7 +37,7 @@ IEP1_binary_human_detection/
 docker build -t binary-human-detection .
 
 # Run the container with model volume mounted and port exposed
-docker run -p 5003:5003 -v $(pwd)/models:/workspace/models binary-human-detection
+docker run -p 5001:5001 -v $(pwd)/models:/workspace/models binary-human-detection
 ```
 
 On first run, if the model is not present in the mounted volume, it will be automatically downloaded.
@@ -114,7 +114,7 @@ Once the service is running, you can test it with curl:
 ### For image detection:
 
 ```bash
-curl -X POST http://localhost:5003/predict \
+curl -X POST http://localhost:5001/predict \
   -F "file=@/path/to/your/image.jpg" \
   -H "Content-Type: multipart/form-data"
 ```
@@ -122,7 +122,7 @@ curl -X POST http://localhost:5003/predict \
 ### For video detection:
 
 ```bash
-curl -X POST http://localhost:5003/predict?max_frames=100 \
+curl -X POST http://localhost:5001/predict?max_frames=100 \
   -F "file=@/path/to/your/video.mp4" \
   -H "Content-Type: multipart/form-data"
 ```
