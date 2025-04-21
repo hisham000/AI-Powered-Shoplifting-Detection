@@ -82,6 +82,8 @@ target/
 profile_default/
 ipython_config.py
 
+#DataSet
+Human.v1-huge-1.yolov5pytorch/
 # pyenv
 #   For a library or package, you might want to ignore these files since the code is
 #   intended to run in multiple environments; otherwise, check them in:
@@ -135,6 +137,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.conda/
 
 # Spyder project settings
 .spyderproject
@@ -177,4 +180,8 @@ cython_debug/
 dataset/
 
 # mlruns
+runs/
 mlruns/
+
+# PyTorch weights & checkpoints
+*.pt
