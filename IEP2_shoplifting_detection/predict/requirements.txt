@@ -58,6 +58,8 @@ optree==0.15.0
 packaging==24.2
 pandas==2.2.3
 pillow==11.2.1
+prometheus-client==0.21.1
+prometheus-fastapi-instrumentator==7.1.0
 protobuf==5.29.4
 pyarrow==19.0.1
 pyasn1==0.6.1
