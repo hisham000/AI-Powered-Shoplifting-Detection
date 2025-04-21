@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  eep:
+    build:
+      context: ./EEP
+    ports:
+      - '8000:8000'
+    depends_on:
+      - iep1
+      - iep2
+      - iep3
+
+  iep1:
+    build:
+      context: ./IEP1_binary_human_detection
+    ports:
+      - '5001:5001'
+    volumes:
+      - ./IEP1_binary_human_detection/models:/workspace/models
+
+  iep2:
+    build:
+      context: ./IEP2_shoplifting_detection/predict
+    ports:
+      - '5002:5002'
+    volumes:
+      - ./IEP2_shoplifting_detection/data/unsupervised:/data/unsupervised
+      - ./IEP2_shoplifting_detection/mlruns:/app/mlruns
+
+  iep3:
+    build:
+      context: ./IEP3_human_detection
+    ports:
+      - '5003:5003'
+    volumes:
+      - ./IEP3_human_detection/runs:/app/runs
