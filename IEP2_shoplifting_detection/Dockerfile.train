@@ -2,23 +2,23 @@ FROM python:3.12-slim
 
 # Install Git and necessary dependencies
 RUN apt-get update && apt-get install -y \
-    git \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+  git \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 # Copy requirements file
-COPY requirements.txt .
+COPY ./train/requirements.txt ./train/requirements.txt
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r ./train/requirements.txt
 
 # instead of `pip install opencv-python`
 RUN pip install opencv-python-headless
 
 # Copy application files
-COPY . .
+COPY ./train ./train
 
 # Create directories for mounted volumes
 RUN mkdir -p /data
@@ -36,6 +36,9 @@ ENV TF_CPP_MIN_LOG_LEVEL=2
 ENV TF_GPU_THREAD_MODE=gpu_private
 ENV TF_GPU_ALLOCATOR=cuda_malloc_async
 ENV TF_ENABLE_ONEDNN_OPTS=1
+
+# Change directory to ./train
+WORKDIR /app/train
 
 # Command to run when container starts with unbuffered output
 CMD ["python", "-u", "main.py"]
