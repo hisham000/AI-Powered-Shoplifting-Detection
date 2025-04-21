@@ -50,7 +50,7 @@ The project uses YOLOv5, a state-of-the-art real-time object detection model:
 docker build -t human-detection .
 
 # Run the container with model volumes mounted and port exposed
-docker run -p 5002:5002 -v $(pwd)/runs:/app/runs human-detection
+docker run -p 5003:5003 -v $(pwd)/runs:/app/runs human-detection
 ```
 
 ## API Endpoints
@@ -112,7 +112,7 @@ Once the service is running, you can test it with curl:
 ### For image detection:
 
 ```bash
-curl -X POST http://localhost:5002/predict \
+curl -X POST http://localhost:5003/predict \
   -F "file=@/path/to/your/image.jpg" \
   -H "Content-Type: multipart/form-data"
 ```
@@ -120,7 +120,7 @@ curl -X POST http://localhost:5002/predict \
 ### For video detection:
 
 ```bash
-curl -X POST http://localhost:5002/predict \
+curl -X POST http://localhost:5003/predict \
   -F "file=@/path/to/your/video.mp4" \
   -H "Content-Type: multipart/form-data"
 ```
