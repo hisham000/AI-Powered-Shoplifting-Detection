@@ -52,17 +52,14 @@ if RUNNING_IN_DOCKER:
     # If you're using docker-compose with service names, override these
     IEP1_URL = os.environ.get("IEP1_URL", f"http://{HOST_PREFIX}:5001")
     IEP2_URL = os.environ.get("IEP2_URL", f"http://{HOST_PREFIX}:5002")
-    IEP3_URL = os.environ.get("IEP3_URL", f"http://{HOST_PREFIX}:5003")
 else:
     # When running locally/outside Docker
     IEP1_URL = os.environ.get("IEP1_URL", "http://localhost:5001")
     IEP2_URL = os.environ.get("IEP2_URL", "http://localhost:5002")
-    IEP3_URL = os.environ.get("IEP3_URL", "http://localhost:5003")
 
 # Print out the configured URLs for debugging
 print(f"IEP1 URL: {IEP1_URL}")
 print(f"IEP2 URL: {IEP2_URL}")
-print(f"IEP3 URL: {IEP3_URL}")
 
 
 # Lifespan event to initialize resources
@@ -95,7 +92,6 @@ async def health_check():
         "EEP": {"status": "healthy"},
         "IEP1": {"status": "unknown"},
         "IEP2": {"status": "unknown"},
-        "IEP3": {"status": "unknown"},
     }
 
     overall_status = "healthy"
@@ -139,25 +135,6 @@ async def health_check():
                 overall_status = "degraded"
     except Exception as e:
         services_status["IEP2"] = {"status": "unhealthy", "error": str(e)}
-        overall_status = "degraded"
-
-    # Check IEP3 health
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(f"{IEP3_URL}/health", timeout=5.0)
-            if response.status_code == 200:
-                services_status["IEP3"] = {
-                    "status": "healthy",
-                    "details": response.json(),
-                }
-            else:
-                services_status["IEP3"] = {
-                    "status": "unhealthy",
-                    "details": response.json(),
-                }
-                overall_status = "degraded"
-    except Exception as e:
-        services_status["IEP3"] = {"status": "unhealthy", "error": str(e)}
         overall_status = "degraded"
 
     return {
@@ -218,27 +195,6 @@ async def iep2_health():
             }
     except Exception as e:
         return {"status": "unhealthy", "service": "IEP2", "error": str(e)}
-
-
-@app.get("/health/IEP3")
-async def iep3_health():
-    """Health check for IEP3"""
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(f"{IEP3_URL}/health", timeout=5.0)
-            if response.status_code == 200:
-                return {
-                    "status": "healthy",
-                    "service": "IEP3",
-                    "details": response.json(),
-                }
-            return {
-                "status": "unhealthy",
-                "service": "IEP3",
-                "details": response.json(),
-            }
-    except Exception as e:
-        return {"status": "unhealthy", "service": "IEP3", "error": str(e)}
 
 
 def split_video_into_segments(video_path: str, segment_duration: int = 3) -> list[str]:
@@ -316,20 +272,6 @@ async def process_with_iep2(file_path: str) -> dict[str, Any]:
             return response.json()
 
 
-async def process_with_iep3(file_path: str) -> dict[str, Any]:
-    """Process a video segment with IEP3 (detailed human detection)"""
-    with open(file_path, "rb") as f:
-        files = {"file": (os.path.basename(file_path), f, "video/mp4")}
-        async with httpx.AsyncClient() as client:
-            response = await client.post(f"{IEP3_URL}/predict", files=files)
-            if response.status_code != 200:
-                raise HTTPException(
-                    status_code=response.status_code,
-                    detail=f"IEP3 error: {response.text}",
-                )
-            return response.json()
-
-
 @app.post("/process-video", response_model=ProcessingResult)
 async def process_video(file: UploadFile = File(...)):
     """
@@ -337,8 +279,7 @@ async def process_video(file: UploadFile = File(...)):
     1. Split into ~3 second segments
     2. Pass each segment through IEP1
     3. If human detected, pass to IEP2
-    4. If shoplifting detected (prediction=1), pass to IEP3
-    5. Return consolidated results
+    4. Return consolidated results
     """
     # Increment video processing counter
     VIDEO_PROCESSING_COUNTER.inc()
@@ -372,7 +313,6 @@ async def process_video(file: UploadFile = File(...)):
                     "segment_id": i,
                     "iep1_result": None,
                     "iep2_result": None,
-                    "iep3_result": None,
                 }
 
                 # Step 1: IEP1 - Human Detection
@@ -392,19 +332,6 @@ async def process_video(file: UploadFile = File(...)):
                     # Step 2: IEP2 - Shoplifting Detection (only if human detected)
                     iep2_result = await process_with_iep2(segment_path)
                     segment_result["iep2_result"] = iep2_result
-
-                    # Check if shoplifting detected (prediction = 1)
-                    shoplifting_detected = iep2_result.get("prediction") == 1
-
-                    if shoplifting_detected:
-                        segments_with_shoplifting += 1
-                        # Increment shoplifting detection counter
-                        SHOPLIFTING_DETECTION_COUNTER.inc()
-
-                        # Step 3: IEP3 - Detailed Human Detection (only if shoplifting detected)
-                        iep3_result = await process_with_iep3(segment_path)
-                        segment_result["iep3_result"] = iep3_result
-                        segments_with_detailed_detection += 1
 
                 result_segments.append(segment_result)
 
