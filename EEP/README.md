@@ -23,34 +23,14 @@ The EEP follows a cascading decision process:
 
 - `POST /process-video` - Process a video file through the detection pipeline
   - Request: Form data with video file
-  - Response: JSON with results of each segment and overall summary
+  - Response: JSON with detection results
 
 ## Response Format
 
 ```json
 {
-  "video_id": "uploaded_video_name.mp4",
-  "segments": [
-    {
-      "segment_id": 0,
-      "iep1_result": {
-        /* IEP1 response */
-      },
-      "iep2_result": {
-        /* IEP2 response (if applicable) */
-      }
-    }
-    // More segments...
-  ],
-  "summary": {
-    "total_segments": 10,
-    "segments_with_humans": 7,
-    "segments_with_shoplifting": 2,
-    "segments_with_detailed_detection": 2,
-    "human_detected": true,
-    "shoplifting_detected": true,
-    "alert_level": "high"
-  }
+  "human_detected": true,
+  "shoplifting_detected": true
 }
 ```
 

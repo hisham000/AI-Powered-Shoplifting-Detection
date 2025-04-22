@@ -1,4 +1,5 @@
 global:
+  # Default sampling FPS for EEP process-video: 4
   scrape_interval: 15s
   evaluation_interval: 15s
 
