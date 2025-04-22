@@ -3,13 +3,14 @@ import os
 import platform
 import shutil
 import tempfile
+import time
 from contextlib import asynccontextmanager
 from typing import Any
 
 import cv2
 import httpx
-from fastapi import FastAPI, File, HTTPException, UploadFile
-from prometheus_client import Counter, Histogram
+from fastapi import FastAPI, File, HTTPException, Query, UploadFile
+from prometheus_client import Counter, Gauge, Histogram
 from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel
 
@@ -31,6 +32,7 @@ PROCESSING_TIME = Histogram(
     "Time spent processing videos",
     buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, 120.0],
 )
+SAMPLE_FPS_GAUGE = Gauge("eep_sample_fps", "Sampling FPS used for IEP1 requests")
 
 # Determine if running inside Docker by checking for the DOCKER environment variable
 # or by checking if a /.dockerenv file exists (a common Docker indicator)
@@ -78,10 +80,9 @@ app = FastAPI(title="External Endpoint (EEP)", lifespan=lifespan)
 Instrumentator().instrument(app).expose(app)
 
 
-class ProcessingResult(BaseModel):
-    video_id: str
-    segments: list[dict[str, Any]]
-    summary: dict[str, Any]
+class ProcessVideoResult(BaseModel):
+    human_detected: bool
+    shoplifting_detected: bool
 
 
 @app.get("/health")
@@ -272,101 +273,75 @@ async def process_with_iep2(file_path: str) -> dict[str, Any]:
             return response.json()
 
 
-@app.post("/process-video", response_model=ProcessingResult)
-async def process_video(file: UploadFile = File(...)):
+@app.post("/process-video", response_model=ProcessVideoResult)
+async def process_video(
+    file: UploadFile = File(...),
+    sample_fps: int = Query(
+        4, ge=1, description="Frames per second to sample for IEP1"
+    ),
+):
     """
-    Process a video file:
-    1. Split into ~3 second segments
-    2. Pass each segment through IEP1
-    3. If human detected, pass to IEP2
-    4. Return consolidated results
+    Send 1fps video to IEP1; if human detected, send original video to IEP2.
+    Returns human_detected and optional shoplifting prediction.
     """
-    # Increment video processing counter
     VIDEO_PROCESSING_COUNTER.inc()
-
-    # Create a temporary file to save the uploaded video
+    # Export sampling fps and start timer for monitoring
+    SAMPLE_FPS_GAUGE.set(sample_fps)
+    start_time = time.time()
+    # Save uploaded video
     with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp:
         tmp_path = tmp.name
         shutil.copyfileobj(file.file, tmp)
-
-    temp_segments = []
-    result_segments = []
-
     try:
-        # Start timing the processing
-        with PROCESSING_TIME.time():
-            # Split video into segments
-            temp_segments = split_video_into_segments(tmp_path)
+        # Create a 1fps version of the video
+        cap = cv2.VideoCapture(tmp_path)
+        fps = cap.get(cv2.CAP_PROP_FPS) or 1
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        cap.release()
 
-            # Track overall results
-            total_segments = len(temp_segments)
-            segments_with_humans = 0
-            segments_with_shoplifting = 0
-            segments_with_detailed_detection = 0
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp1:
+            tmp_1fps_path = tmp1.name
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        out = cv2.VideoWriter(tmp_1fps_path, fourcc, sample_fps, (width, height))
+        cap = cv2.VideoCapture(tmp_path)
+        idx = 0
+        step = max(int(fps / sample_fps), 1)
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            if idx % step == 0:
+                out.write(frame)
+            idx += 1
+        cap.release()
+        out.release()
 
-            # Increment segment counter
-            SEGMENT_PROCESSING_COUNTER.inc(total_segments)
+        # Human detection at 1fps
+        iep1_res = await process_with_iep1(tmp_1fps_path)
+        human_detected = iep1_res.get("human_detected", False)
+        if human_detected:
+            HUMAN_DETECTION_COUNTER.inc()
 
-            # Process each segment through the pipeline
-            for i, segment_path in enumerate(temp_segments):
-                segment_result: dict[str, Any] = {
-                    "segment_id": i,
-                    "iep1_result": None,
-                    "iep2_result": None,
-                }
+        # Cleanup 1fps file
+        if os.path.exists(tmp_1fps_path):
+            os.remove(tmp_1fps_path)
 
-                # Step 1: IEP1 - Human Detection
-                iep1_result = await process_with_iep1(segment_path)
-                segment_result["iep1_result"] = iep1_result
+        if not human_detected:
+            elapsed = time.time() - start_time
+            PROCESSING_TIME.observe(elapsed)
+            return {"human_detected": False, "shoplifting_detected": False}
 
-                # Check if human detected
-                human_detected = iep1_result.get("summary", {}).get(
-                    "human_detected", False
-                )
-
-                if human_detected:
-                    segments_with_humans += 1
-                    # Increment human detection counter
-                    HUMAN_DETECTION_COUNTER.inc()
-
-                    # Step 2: IEP2 - Shoplifting Detection (only if human detected)
-                    iep2_result = await process_with_iep2(segment_path)
-                    segment_result["iep2_result"] = iep2_result
-
-                result_segments.append(segment_result)
-
-            # Create summary
-            summary = {
-                "total_segments": total_segments,
-                "segments_with_humans": segments_with_humans,
-                "segments_with_shoplifting": segments_with_shoplifting,
-                "segments_with_detailed_detection": segments_with_detailed_detection,
-                "human_detected": segments_with_humans > 0,
-                "shoplifting_detected": segments_with_shoplifting > 0,
-                "alert_level": "high" if segments_with_shoplifting > 0 else "low",
-            }
-
-            return {
-                "video_id": file.filename or "uploaded_video",
-                "segments": result_segments,
-                "summary": summary,
-            }
-
-    except Exception as e:
-        print(e)
-        raise HTTPException(status_code=500, detail=f"Error processing video: {str(e)}")
-
+        # Send original video to IEP2
+        iep2_res = await process_with_iep2(tmp_path)
+        pred = iep2_res.get("prediction")
+        if pred == 1:
+            SHOPLIFTING_DETECTION_COUNTER.inc()
+        elapsed = time.time() - start_time
+        PROCESSING_TIME.observe(elapsed)
+        return {"human_detected": True, "shoplifting_detected": pred == 1}
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=f"Processing error: {e}")
     finally:
-        # Clean up temporary files
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
-
-        # Clean up segment files
-        for segment in temp_segments:
-            if os.path.exists(segment):
-                os.remove(segment)
-
-        # Clean up parent directory of segments if it exists
-        segment_dir = os.path.dirname(temp_segments[0]) if temp_segments else None
-        if segment_dir and os.path.exists(segment_dir):
-            shutil.rmtree(segment_dir, ignore_errors=True)
