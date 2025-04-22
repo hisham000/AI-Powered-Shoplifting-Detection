@@ -36,6 +36,39 @@
       "type": "row"
     },
     {
+      "id": 13,
+      "type": "text",
+      "title": "Sampling FPS",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 1 },
+      "options": {
+        "mode": "markdown",
+        "content": "**Sampling FPS:** Default is 4 frames per second. Adjust via the `sample_fps` query parameter on `/process-video`."
+      }
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": { "unit": "none", "decimals": 0 },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 2 },
+      "id": 14,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "pluginVersion": "9.5.1",
+      "targets": [{ "expr": "eep_sample_fps", "refId": "A" }],
+      "title": "Sampling FPS (EEP)",
+      "type": "gauge"
+    },
+    {
       "datasource": {
         "type": "prometheus",
         "uid": "PBFA97CFB590B2093"
@@ -63,7 +96,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 1
+        "y": 2
       },
       "id": 1,
       "options": {
@@ -123,7 +156,7 @@
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 1
+        "y": 2
       },
       "id": 2,
       "options": {
@@ -147,8 +180,8 @@
           },
           "editorMode": "builder",
           "expr": "eep_human_detected_total",
-          "instant": false,
-          "range": true,
+          "instant": true,
+          "range": false,
           "refId": "A"
         }
       ],
@@ -183,7 +216,7 @@
         "h": 8,
         "w": 6,
         "x": 12,
-        "y": 1
+        "y": 2
       },
       "id": 3,
       "options": {
@@ -207,8 +240,8 @@
           },
           "editorMode": "builder",
           "expr": "eep_shoplifting_detected_total",
-          "instant": false,
-          "range": true,
+          "instant": true,
+          "range": false,
           "refId": "A"
         }
       ],
@@ -278,7 +311,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 1
+        "y": 2
       },
       "id": 4,
       "options": {
@@ -327,7 +360,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 9
+        "y": 10
       },
       "id": 10,
       "panels": [],
@@ -393,7 +426,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 10
+        "y": 11
       },
       "id": 6,
       "options": {
@@ -495,7 +528,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 10
+        "y": 11
       },
       "id": 7,
       "options": {
@@ -544,7 +577,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 18
+        "y": 19
       },
       "id": 11,
       "panels": [],
@@ -590,7 +623,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 19
+        "y": 20
       },
       "id": 5,
       "options": {
@@ -659,7 +692,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 19
+        "y": 20
       },
       "id": 9,
       "options": {
