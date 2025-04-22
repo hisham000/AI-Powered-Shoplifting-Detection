@@ -115,8 +115,7 @@ def get_best_model():
     # Start timing model loading
     with MODEL_LOADING_TIME.time():
         # Set tracking URI to work both locally and in Docker
-        mlflow_dir = os.path.join(os.getcwd(), TRACKING_URI)
-        tracking_uri = f"file://{mlflow_dir}"
+        tracking_uri = f"file://{TRACKING_URI}"
         mlflow.set_tracking_uri(tracking_uri)
 
         client = MlflowClient()
@@ -135,7 +134,7 @@ def get_best_model():
         best_run_id = runs[0].info.run_id
 
         direct_path = os.path.join(
-            mlflow_dir, exp.experiment_id, best_run_id, "artifacts/model"
+            TRACKING_URI, exp.experiment_id, best_run_id, "artifacts/model"
         )
 
         return mlflow.keras.load_model(direct_path)

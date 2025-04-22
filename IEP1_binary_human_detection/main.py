@@ -5,11 +5,11 @@ import sys
 import tempfile
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import cv2
 import numpy as np
-from fastapi import FastAPI, File, HTTPException, Query, UploadFile
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 from openvino import Core  # type: ignore[import]
 from prometheus_client import Counter, Gauge, Histogram, Summary
@@ -192,111 +192,35 @@ def process_frame(
 
 
 @app.post("/predict")
-async def predict(
-    file: UploadFile = File(...),
-    max_frames: Optional[int] = Query(
-        None, description="Maximum number of frames to process from video"
-    ),
-):
+async def predict_video(file: UploadFile = File(...)):
     """
-    Endpoint to detect if a human is present in an image or video.
-    For images, returns a single result.
-    For videos, returns frame-by-frame results.
-
-    Parameters:
-    - file: Image or video file
-    - max_frames: For videos, limit the number of frames to process
-
-    Returns:
-        - For images: {"human_detected": bool, "confidence": float}
-        - For videos: {"results": [{"frame": int, "human_detected": bool, "confidence": float}, ...],
-                      "summary": {"human_detected": bool, "highest_confidence": float}}
+    Process a video and return whether at least one frame contains a human.
+    Returns: {"human_detected": bool}
     """
-    # Increment prediction counter
     PREDICTION_COUNTER.inc()
-
-    # Save upload to a temp file
-    if file.filename:
-        suffix = Path(file.filename).suffix.lower()
-        valid_image_formats = [".jpg", ".jpeg", ".png"]
-        valid_video_formats = [".mp4", ".avi", ".mov", ".mkv"]
-
-        if suffix not in valid_image_formats + valid_video_formats:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Unsupported file format. Supported formats: {', '.join(valid_image_formats + valid_video_formats)}",
-            )
-    else:
-        suffix = ".jpg"  # Default to jpg if no filename
-
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+    # Save upload to a temp mp4 file
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp:
         tmp_path = tmp.name
         shutil.copyfileobj(file.file, tmp)
-
     try:
-        # Get input size from model
-        h, w = input_layer.shape[2:]
-
-        # Check if file is an image
-        if suffix in [".jpg", ".jpeg", ".png"]:
-            # Process image
-            image = cv2.imread(tmp_path)
-            if image is None:
-                raise HTTPException(status_code=400, detail="Invalid image file")
-
-            result = process_frame(image, h, w)
-            return JSONResponse(result)
-
-        # Process video
         cap = cv2.VideoCapture(tmp_path)
         if not cap.isOpened():
             raise HTTPException(status_code=400, detail="Could not open video file")
-
-        frame_results = []
-        frame_idx = 0
-        highest_confidence = 0.0
-        any_human_detected = False
-
+        any_human = False
+        # Process each frame until detection
+        h, w = input_layer.shape[2:]
         while True:
             ret, frame = cap.read()
             if not ret:
                 break
-
-            if max_frames is not None and frame_idx >= max_frames:
-                break
-
             result = process_frame(frame, h, w)
-            result["frame"] = frame_idx
-
             if result["human_detected"]:
-                any_human_detected = True
-                highest_confidence = max(highest_confidence, result["confidence"])
-
-            frame_results.append(result)
-            frame_idx += 1
-
+                any_human = True
+                break
         cap.release()
-
-        # Update confidence gauge with highest confidence from video
-        if any_human_detected:
-            CONFIDENCE_GAUGE.set(highest_confidence)
-
-        # Return combined results for video
-        return JSONResponse(
-            {
-                "results": frame_results,
-                "summary": {
-                    "human_detected": any_human_detected,
-                    "highest_confidence": highest_confidence,
-                    "total_frames": frame_idx,
-                },
-            }
-        )
-
+        return JSONResponse({"human_detected": any_human})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
     finally:
-        # Clean up temp file
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
