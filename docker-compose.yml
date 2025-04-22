@@ -10,11 +10,9 @@ services:
       - RUNNING_IN_DOCKER=true
       - IEP1_URL=http://iep1:5001
       - IEP2_URL=http://iep2:5002
-      - IEP3_URL=http://iep3:5003
     depends_on:
       - iep1
       - iep2
-      - iep3
 
   iep1:
     build:
@@ -26,20 +24,13 @@ services:
 
   iep2:
     build:
-      context: ./IEP2_shoplifting_detection/predict
+      context: ./IEP2_shoplifting_detection
+      dockerfile: Dockerfile.predict
     expose:
       - '5002'
     volumes:
       - ./IEP2_shoplifting_detection/data/unsupervised:/data/unsupervised
       - ./IEP2_shoplifting_detection/mlruns:/app/mlruns
-
-  iep3:
-    build:
-      context: ./IEP3_human_detection
-    expose:
-      - '5003'
-    volumes:
-      - ./IEP3_human_detection/runs:/app/runs
 
   prometheus:
     image: prom/prometheus:latest
@@ -57,7 +48,6 @@ services:
       - eep
       - iep1
       - iep2
-      - iep3
 
   grafana:
     image: grafana/grafana:latest
