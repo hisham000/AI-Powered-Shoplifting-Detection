@@ -1,4 +1,5 @@
 global:
+  # Default sampling FPS for EEP process-video: 4
   scrape_interval: 15s
   evaluation_interval: 15s
 
@@ -17,8 +18,3 @@ scrape_configs:
     metrics_path: '/metrics'
     static_configs:
       - targets: ['iep2:5002']
-
-  - job_name: 'iep3_human_detection'
-    metrics_path: '/metrics'
-    static_configs:
-      - targets: ['iep3:5003']

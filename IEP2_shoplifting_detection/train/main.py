@@ -436,7 +436,7 @@ def main():
 
         # Clean up old models after the run is complete
         print("Training run completed, starting cleanup...", flush=True)
-        cleanup_mlruns(EXPERIMENT_NAME)
+        # cleanup_mlruns(EXPERIMENT_NAME)
 
     except Exception as e:
         print(f"Error in main process: {e}", flush=True)
