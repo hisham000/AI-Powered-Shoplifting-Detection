@@ -178,6 +178,7 @@ cython_debug/
 
 # datasets
 dataset/
+data/
 
 # mlruns
 runs/
