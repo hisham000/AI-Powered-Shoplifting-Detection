@@ -1,0 +1,45 @@
+name: Build and Push Docker Images
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'EEP/Dockerfile'
+      - 'IEP1_binary_human_detection/Dockerfile'
+      - 'IEP2_shoplifting_detection/Dockerfile.predict'
+
+jobs:
+  build_and_push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push EEP image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./EEP
+          file: ./EEP/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/eep:latest
+
+      - name: Build and push IEP1 image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./IEP1_binary_human_detection
+          file: ./IEP1_binary_human_detection/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/iep1:latest
+
+      - name: Build and push IEP2 prediction image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./IEP2_shoplifting_detection
+          file: ./IEP2_shoplifting_detection/Dockerfile.predict
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/iep2:predict-latest
