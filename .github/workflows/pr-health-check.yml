@@ -19,6 +19,7 @@ jobs:
         run: |
           echo "Checking EEP health status..."
           for i in {1..12}; do
+            curl -s http://localhost:8000/health | jq
             if curl -s http://localhost:8000/health | jq -e '.status == "healthy"' >/dev/null; then
               echo "EEP is healthy"
               exit 0
