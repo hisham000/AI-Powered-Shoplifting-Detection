@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'IEP2_shoplifting_detection/Dockerfile.predict'
+      - 'IEP2_shoplifting_detection/predict/Dockerfile'
 
 jobs:
   build-and-push:
@@ -21,7 +21,7 @@ jobs:
       - name: Build and push IEP2 prediction image
         uses: docker/build-push-action@v4
         with:
-          context: ./IEP2_shoplifting_detection
-          file: ./IEP2_shoplifting_detection/Dockerfile.predict
+          context: ./IEP2_shoplifting_detection/predict
+          file: ./IEP2_shoplifting_detection/predict/Dockerfile
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/iep2:predict-latest
