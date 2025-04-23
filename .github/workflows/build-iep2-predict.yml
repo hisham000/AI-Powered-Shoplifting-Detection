@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'IEP2_shoplifting_detection/predict/Dockerfile'
+      - 'IEP2_shoplifting_detection/predict'
 
 jobs:
   build-and-push:
