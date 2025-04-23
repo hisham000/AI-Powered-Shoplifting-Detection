@@ -242,12 +242,4 @@ async def predict(file: UploadFile = File(...)) -> dict[str, int]:
     # Update confidence gauge
     CONFIDENCE_GAUGE.set(confidence)
 
-    # Save the uploaded file to the appropriate directory based on prediction
-    try:
-        if file.filename:
-            save_uploaded_file(data, file.filename, content_type, label)
-    except Exception as e:
-        # Log the error but don't fail the prediction
-        print(f"Error saving file to unsupervised directory: {e}")
-
     return {"prediction": label}
