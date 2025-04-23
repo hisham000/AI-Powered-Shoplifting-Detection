@@ -2,8 +2,7 @@ version: '3.8'
 
 services:
   eep:
-    build:
-      context: ./EEP
+    image: jadshaker/eece-503n-project-eep:latest
     ports:
       - '8000:8000'
     environment:
@@ -15,22 +14,19 @@ services:
       - iep2
 
   iep1:
-    build:
-      context: ./IEP1_binary_human_detection
+    image: jadshaker/eece-503n-project-iep1:latest
     expose:
       - '5001'
     volumes:
       - ./IEP1_binary_human_detection/models:/workspace/models
 
   iep2:
-    build:
-      context: ./IEP2_shoplifting_detection
-      dockerfile: Dockerfile.predict
+    image: jadshaker/eece-503n-project-iep2:latest
     expose:
       - '5002'
     volumes:
-      - ./IEP2_shoplifting_detection/data/unsupervised:/data/unsupervised
-      - ./IEP2_shoplifting_detection/mlruns:/app/mlruns
+      - ./data/unsupervised:/data/unsupervised
+      - ./mlruns:/app/mlruns
 
   prometheus:
     image: prom/prometheus:latest
