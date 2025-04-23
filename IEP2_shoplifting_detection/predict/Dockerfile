@@ -3,16 +3,16 @@ FROM python:3.12-slim
 WORKDIR /app
 
 # Copy requirements file
-COPY ./predict/requirements.txt ./predict/requirements.txt
+COPY ./requirements.txt ./requirements.txt
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r ./predict/requirements.txt
+RUN pip install --no-cache-dir -r ./requirements.txt
 
 # instead of `pip install opencv-python`
 RUN pip install opencv-python-headless
 
 # Copy application files
-COPY ./predict ./predict
+COPY . .
 
 # Create directories for mounted volumes
 RUN mkdir -p /data/unsupervised
@@ -23,9 +23,6 @@ VOLUME ["/data/unsupervised", "/app/mlruns"]
 
 # Expose port for the FastAPI application
 EXPOSE 5002
-
-# Change directory to ./predict
-WORKDIR /app/predict
 
 # Command to run when container starts
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5002"]
