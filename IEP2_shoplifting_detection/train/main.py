@@ -46,36 +46,34 @@ from tensorflow.keras.utils import to_categorical  # type: ignore
 def print_memory_usage(message=""):
     """Print current memory usage."""
     usage = resource.getrusage(resource.RUSAGE_SELF)
-    print(f"Memory usage {message}: {usage.ru_maxrss / 1024} MB", flush=True)
+    print(f"Memory usage {message}: {usage.ru_maxrss / 1024} MB")
 
 
 # Verify data directory exists
 if not os.path.exists(f"{DATA_ROOT}/0"):
-    print("Loading data...", flush=True)
+    print("Loading data...")
     load_data()
 
 # Check the classes directories
 for cls in CLASSES_LIST:
     cls_dir = os.path.join(DATA_ROOT, cls)
     if not os.path.exists(cls_dir):
-        print(f"ERROR: Class directory not found: {cls_dir}", flush=True)
-        print(
-            f"Available directories in {DATA_ROOT}:", os.listdir(DATA_ROOT), flush=True
-        )
+        print(f"ERROR: Class directory not found: {cls_dir}")
+        print(f"Available directories in {DATA_ROOT}:", os.listdir(DATA_ROOT))
         sys.exit(1)
 
     # Check for video files
     files = [f for f in os.listdir(cls_dir) if f.endswith((".mp4", ".avi", ".mov"))]
     if len(files) == 0:
-        print(f"WARNING: No video files found in {cls_dir}", flush=True)
-        print(f"Contains: {os.listdir(cls_dir)}", flush=True)
+        print(f"WARNING: No video files found in {cls_dir}")
+        print(f"Contains: {os.listdir(cls_dir)}")
 
-print(f"Found data directory: {DATA_ROOT}", flush=True)
-print(f"Classes: {CLASSES_LIST}", flush=True)
+print(f"Found data directory: {DATA_ROOT}")
+print(f"Classes: {CLASSES_LIST}")
 for cls in CLASSES_LIST:
     cls_dir = os.path.join(DATA_ROOT, cls)
     files = [f for f in os.listdir(cls_dir) if f.endswith((".mp4", ".avi", ".mov"))]
-    print(f"Class {cls}: {len(files)} videos", flush=True)
+    print(f"Class {cls}: {len(files)} videos")
 
 # MLflow setup
 mlflow.set_tracking_uri(TRACKING_URI)
@@ -98,13 +96,13 @@ def extract_frames(video_path):
         cap.release()
         return frames
     except Exception as e:
-        print(f"Error extracting frames from {video_path}: {e}", flush=True)
+        print(f"Error extracting frames from {video_path}: {e}")
         traceback.print_exc()
         return []
 
 
 def create_dataset():
-    print("Starting dataset creation...", flush=True)
+    print("Starting dataset creation...")
     print_memory_usage("before dataset creation")
     X, y = [], []
     try:
@@ -112,7 +110,7 @@ def create_dataset():
         for idx, cls in enumerate(CLASSES_LIST):
             cls_dir = os.path.join(DATA_ROOT, cls)
             files = os.listdir(cls_dir)
-            print(f"Processing {len(files)} videos from class {cls}...", flush=True)
+            print(f"Processing {len(files)} videos from class {cls}...")
             for i, fname in enumerate(files):
                 if i % 50 == 0:
                     print(
@@ -131,24 +129,24 @@ def create_dataset():
                 if i % 100 == 0:
                     gc.collect()
 
-            print(f"Completed processing class {cls}", flush=True)
+            print(f"Completed processing class {cls}")
 
-        print(f"Dataset creation complete with {total_videos} videos", flush=True)
+        print(f"Dataset creation complete with {total_videos} videos")
         print_memory_usage("after dataset creation")
 
         # Convert to numpy arrays
-        print("Converting to numpy arrays...", flush=True)
+        print("Converting to numpy arrays...")
         X_np = np.array(X)
         y_np = to_categorical(y)
-        print(f"X shape: {X_np.shape}, y shape: {y_np.shape}", flush=True)
+        print(f"X shape: {X_np.shape}, y shape: {y_np.shape}")
         print_memory_usage("after numpy conversion")
 
         return X_np, y_np
     except Exception as e:
-        print(f"Error creating dataset: {e}", flush=True)
+        print(f"Error creating dataset: {e}")
         traceback.print_exc()
         if X and y:
-            print(f"Returning partial dataset with {len(X)} samples", flush=True)
+            print(f"Returning partial dataset with {len(X)} samples")
             return np.array(X), to_categorical(y)
         else:
             sys.exit(1)
@@ -161,7 +159,7 @@ def cleanup_mlruns(experiment_name: str) -> None:
     Args:
         experiment_name: Name of the experiment to clean up
     """
-    print("Starting mlruns cleanup process...", flush=True)
+    print("Starting mlruns cleanup process...")
     try:
         # Get the experiment ID
         experiment = mlflow.get_experiment_by_name(experiment_name)
@@ -172,12 +170,12 @@ def cleanup_mlruns(experiment_name: str) -> None:
             return
 
         experiment_id = experiment.experiment_id
-        print(f"Found experiment with ID: {experiment_id}", flush=True)
+        print(f"Found experiment with ID: {experiment_id}")
 
         # Get all runs for this experiment
         runs = mlflow.search_runs(experiment_ids=[experiment_id])
         if runs.empty:
-            print("No runs found for the experiment, skipping cleanup", flush=True)
+            print("No runs found for the experiment, skipping cleanup")
             return
 
         # Find the run with the highest accuracy
@@ -188,7 +186,7 @@ def cleanup_mlruns(experiment_name: str) -> None:
         elif "metrics.accuracy" in runs.columns:
             accuracy_col = "metrics.accuracy"
         else:
-            print("No accuracy metric found in runs, skipping cleanup", flush=True)
+            print("No accuracy metric found in runs, skipping cleanup")
             return
 
         # Sort by accuracy (descending) and get the best run
@@ -253,13 +251,13 @@ def cleanup_mlruns(experiment_name: str) -> None:
         )
 
     except Exception as e:
-        print(f"Error during cleanup: {e}", flush=True)
+        print(f"Error during cleanup: {e}")
         traceback.print_exc()
 
 
 def main():
     try:
-        print("Starting main process...", flush=True)
+        print("Starting main process...")
         print_memory_usage("at start")
 
         with mlflow.start_run():
@@ -276,17 +274,17 @@ def main():
             mlflow.log_params(params)
 
             # Prepare data
-            print("Preparing data...", flush=True)
+            print("Preparing data...")
             X, y = create_dataset()
             print_memory_usage("after data preparation")
 
-            print(f"Dataset loaded with shape X: {X.shape}, y: {y.shape}", flush=True)
+            print(f"Dataset loaded with shape X: {X.shape}, y: {y.shape}")
 
             X_train, X_test, y_train, y_test = train_test_split(
                 X, y, test_size=0.25, shuffle=True
             )
-            print(f"Train shapes - X: {X_train.shape}, y: {y_train.shape}", flush=True)
-            print(f"Test shapes - X: {X_test.shape}, y: {y_test.shape}", flush=True)
+            print(f"Train shapes - X: {X_train.shape}, y: {y_train.shape}")
+            print(f"Test shapes - X: {X_test.shape}, y: {y_test.shape}")
             print_memory_usage("after train/test split")
 
             # Reduce memory usage by deleting original arrays
@@ -294,10 +292,10 @@ def main():
             gc.collect()
             print_memory_usage("after deleting original arrays")
 
-            print("Data preparation complete.", flush=True)
+            print("Data preparation complete.")
 
             # Build model
-            print("Building model...", flush=True)
+            print("Building model...")
             inp = Input((SEQUENCE_LENGTH, IMAGE_HEIGHT, IMAGE_WIDTH, 3))
             x = ConvLSTM2D(
                 4,
@@ -337,14 +335,14 @@ def main():
             x = Flatten()(x)
             out = Dense(len(CLASSES_LIST), activation="softmax")(x)
             model = Model(inp, out)
-            print("Model built.", flush=True)
+            print("Model built.")
 
             # Compile
-            print("Compiling model...", flush=True)
+            print("Compiling model...")
             model.compile(
                 loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"]
             )
-            print("Model compiled.", flush=True)
+            print("Model compiled.")
 
             # Early stopping
             es = EarlyStopping(
@@ -355,7 +353,7 @@ def main():
             )
 
             # Train
-            print("Starting training...", flush=True)
+            print("Starting training...")
             print_memory_usage("before training")
             history = model.fit(
                 X_train,
@@ -368,10 +366,10 @@ def main():
                 verbose=1,  # Make sure training progress is displayed
             )
             print_memory_usage("after training")
-            print("Training complete.", flush=True)
+            print("Training complete.")
 
             # Log metrics per epoch
-            print("Logging metrics...", flush=True)
+            print("Logging metrics...")
             for step, (l, vl, acc, vac) in enumerate(
                 zip(
                     history.history["loss"],
@@ -384,10 +382,10 @@ def main():
                 mlflow.log_metric("val_loss", vl, step=step)
                 mlflow.log_metric("accuracy", acc, step=step)
                 mlflow.log_metric("val_accuracy", vac, step=step)
-            print("Metrics logged.", flush=True)
+            print("Metrics logged.")
 
             # Evaluate on test set
-            print("Evaluating on test set...", flush=True)
+            print("Evaluating on test set...")
             test_loss, test_acc = model.evaluate(X_test, y_test)
             mlflow.log_metric("test_loss", test_loss)
             mlflow.log_metric("test_accuracy", test_acc)
@@ -397,12 +395,12 @@ def main():
             )
 
             # Log the model (includes weights)
-            print("Logging model...", flush=True)
+            print("Logging model...")
             mlflow.keras.log_model(model, artifact_path="model")
-            print("Model logged.", flush=True)
+            print("Model logged.")
 
             # Log loss/validation curves as figures
-            print("Logging figures...", flush=True)
+            print("Logging figures...")
             plt.figure()
             plt.plot(history.history["loss"], label="loss")
             plt.plot(history.history["val_loss"], label="val_loss")
@@ -420,7 +418,7 @@ def main():
             plt.close()
 
             # Predictions & confusion matrix
-            print("Generating predictions and confusion matrix...", flush=True)
+            print("Generating predictions and confusion matrix...")
             preds = model.predict(X_test)
             pred_labels = np.argmax(preds, axis=1)
             true_labels = np.argmax(y_test, axis=1)
@@ -432,14 +430,12 @@ def main():
             plt.title("Confusion Matrix")
             mlflow.log_figure(plt.gcf(), "confusion_matrix.png")
             plt.close()
-            print("Confusion matrix logged.", flush=True)
+            print("Confusion matrix logged.")
 
-        # Clean up old models after the run is complete
-        print("Training run completed, starting cleanup...", flush=True)
-        # cleanup_mlruns(EXPERIMENT_NAME)
+        print("Training run completed")
 
     except Exception as e:
-        print(f"Error in main process: {e}", flush=True)
+        print(f"Error in main process: {e}")
         traceback.print_exc()
         sys.exit(1)
 
