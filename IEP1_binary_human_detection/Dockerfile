@@ -19,6 +19,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Install OpenCV headless
 RUN pip install --no-cache-dir opencv-python-headless
 
+# Install OpenVINO development tools (includes omz_downloader)
+RUN pip install --no-cache-dir openvino-dev
+
 # Create model directory structure
 RUN mkdir -p /workspace/models
 
