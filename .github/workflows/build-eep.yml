@@ -1,0 +1,27 @@
+name: Build and Push EEP Docker Image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'EEP/Dockerfile'
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push EEP image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./EEP
+          file: ./EEP/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/eep:latest
