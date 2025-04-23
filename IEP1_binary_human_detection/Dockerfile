@@ -10,9 +10,6 @@ WORKDIR /workspace
 # Install system dependencies
 RUN apt update && apt install -y python3-pip libgl1
 
-# Switch back to default user (optional, for security)
-USER openvino
-
 # Copy requirements file
 COPY requirements.txt .
 
@@ -36,6 +33,9 @@ VOLUME ["/workspace/models"]
 
 # Expose FastAPI port
 EXPOSE 5001
+
+# Switch back to default user (optional, for security)
+USER openvino
 
 # Run FastAPI app
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5001"]
