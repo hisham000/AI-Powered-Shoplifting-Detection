@@ -2,7 +2,8 @@ version: '3.8'
 
 services:
   eep:
-    image: jadshaker/eece-503n-project-eep:latest
+    build:
+      context: ./EEP
     ports:
       - '8000:8000'
     environment:
@@ -14,14 +15,16 @@ services:
       - iep2
 
   iep1:
-    image: jadshaker/eece-503n-project-iep1:latest
+    build:
+      context: ./IEP1_binary_human_detection
     expose:
       - '5001'
     volumes:
       - ./IEP1_binary_human_detection/models:/workspace/models
 
   iep2:
-    image: jadshaker/eece-503n-project-iep2:latest
+    build:
+      context: ./IEP2_shoplifting_detection/predict
     expose:
       - '5002'
     volumes:
