@@ -4,16 +4,16 @@ import platform
 import shutil
 import tempfile
 import time
-import uuid
 from contextlib import asynccontextmanager
 from typing import Any, Optional
 
 import cv2
 import httpx
-from fastapi import FastAPI, File, HTTPException, Query, UploadFile
+from fastapi import FastAPI, File, HTTPException, Query, UploadFile, Form
 from prometheus_client import Counter, Gauge, Histogram
 from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
 
 # Prometheus metrics
 VIDEO_PROCESSING_COUNTER = Counter(
@@ -76,13 +76,20 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="External Endpoint (EEP)", lifespan=lifespan)
+# Allow CORS from the UI
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Set up Prometheus instrumentation
 Instrumentator().instrument(app).expose(app)
 
 
 class ProcessVideoResult(BaseModel):
-    human_detected: bool
     shoplifting_detected: bool
     video_id: Optional[str] = None
 
@@ -289,6 +296,7 @@ async def process_with_iep2(file_path: str) -> dict[str, Any]:
 @app.post("/process-video", response_model=ProcessVideoResult)
 async def process_video(
     file: UploadFile = File(...),
+    video_id: str = Form(..., description="Client-generated video ID"),
     sample_fps: int = Query(
         4, ge=1, description="Frames per second to sample for IEP1"
     ),
@@ -343,27 +351,22 @@ async def process_video(
         if not human_detected:
             elapsed = time.time() - start_time
             PROCESSING_TIME.observe(elapsed)
-            return {"human_detected": False, "shoplifting_detected": False}
+            return {"shoplifting_detected": False, "video_id": None}
 
         # Send original video to IEP2
         iep2_res = await process_with_iep2(tmp_path)
         pred = iep2_res.get("prediction")
         if pred == 1:
             SHOPLIFTING_DETECTION_COUNTER.inc()
-            # Generate a UUID and save the video for unconfirmed shoplifting
-            video_id = str(uuid.uuid4())
+            # Use provided video_id to save the video for unconfirmed shoplifting
             unconfirmed_dir = os.path.join(os.getcwd(), "data", "unconfirmed")
             os.makedirs(unconfirmed_dir, exist_ok=True)
             shutil.copy(tmp_path, os.path.join(unconfirmed_dir, f"{video_id}.mp4"))
         elapsed = time.time() - start_time
         PROCESSING_TIME.observe(elapsed)
         if pred == 1:
-            return {
-                "human_detected": True,
-                "shoplifting_detected": True,
-                "video_id": video_id,
-            }
-        return {"human_detected": True, "shoplifting_detected": False}
+            return {"shoplifting_detected": True, "video_id": video_id}
+        return {"shoplifting_detected": False, "video_id": None}
     except ValueError as e:
         raise HTTPException(status_code=500, detail=f"Processing error: {e}")
     finally:
