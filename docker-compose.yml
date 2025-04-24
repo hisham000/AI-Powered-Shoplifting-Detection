@@ -29,7 +29,6 @@ services:
     expose:
       - '5002'
     volumes:
-      - ./data/unsupervised:/data/unsupervised
       - ./IEP2_shoplifting_detection/train/mlruns:/app/mlruns
 
   prometheus:
