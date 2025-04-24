@@ -54,3 +54,17 @@ Run the container:
 ```bash
 docker run --rm -p 8000:8000 eep-service
 ```
+
+## Running with Docker from Docker Hub
+
+Pull the Docker image from Docker Hub:
+
+```bash
+docker pull jadshaker/eece-503n-project-eep:latest
+```
+
+Run the container:
+
+```bash
+docker run --rm -p 8000:8000 jadshaker/eece-503n-project-eep:latest
+```
