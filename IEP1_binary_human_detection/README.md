@@ -42,6 +42,20 @@ docker run -p 5001:5001 -v $(pwd)/models:/workspace/models binary-human-detectio
 
 On first run, if the model is not present in the mounted volume, it will be automatically downloaded.
 
+## Running with Docker from Docker Hub
+
+Pull the Docker image from Docker Hub:
+
+```bash
+docker pull jadshaker/iep1
+```
+
+Run the container:
+
+```bash
+docker run --rm -p 5001:5001 jadshaker/iep1
+```
+
 ## API Endpoints
 
 Once the service is running, the following endpoints are available:
