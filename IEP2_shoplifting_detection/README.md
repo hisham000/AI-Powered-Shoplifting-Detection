@@ -13,9 +13,6 @@ IEP2_shoplifting_detection/
 ├── data/                  # Dataset directory
 │   ├── 0/                 # Non-shoplifting videos (class 0)
 │   ├── 1/                 # Shoplifting videos (class 1)
-│   └── unsupervised/      # Directory for storing classified unknown videos
-│       ├── 0/             # Predicted non-shoplifting videos
-│       └── 1/             # Predicted shoplifting videos
 │
 ├── train/                 # Training component
 │   ├── config.py          # Training configuration
@@ -75,7 +72,6 @@ docker build -t shoplifting-detection-predicting -f Dockerfile .
 # Run the container with mounted volumes and exposed port
 docker run --rm \
   -p 5002:5002 \
-  -v $(pwd)/data/unsupervised:/data/unsupervised \
   -v $(pwd)/mlruns:/app/mlruns \
   shoplifting-detection-predicting
 ```
@@ -122,12 +118,3 @@ curl -X POST \
 ```
 
 Or use a tool like Postman to make the API request.
-
-## Note on Data Management
-
-The system automatically organizes processed videos from the prediction service:
-
-- Videos predicted as normal behavior (class 0) are saved to `data/unsupervised/0/`
-- Videos predicted as shoplifting (class 1) are saved to `data/unsupervised/1/`
-
-This feature helps with continuous data collection and model improvement.
