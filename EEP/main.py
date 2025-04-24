@@ -87,6 +87,17 @@ class ProcessVideoResult(BaseModel):
     video_id: Optional[str] = None
 
 
+class ConfirmVideoRequest(BaseModel):
+    video_id: str
+    label: int
+
+
+class ConfirmVideoResponse(BaseModel):
+    video_id: str
+    label: int
+    status: str
+
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint for all services"""
@@ -304,7 +315,7 @@ async def process_video(
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp1:
             tmp_1fps_path = tmp1.name
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore
         out = cv2.VideoWriter(tmp_1fps_path, fourcc, sample_fps, (width, height))
         cap = cv2.VideoCapture(tmp_path)
         idx = 0
@@ -347,10 +358,29 @@ async def process_video(
         elapsed = time.time() - start_time
         PROCESSING_TIME.observe(elapsed)
         if pred == 1:
-            return {"human_detected": True, "shoplifting_detected": True, "video_id": video_id}
+            return {
+                "human_detected": True,
+                "shoplifting_detected": True,
+                "video_id": video_id,
+            }
         return {"human_detected": True, "shoplifting_detected": False}
     except ValueError as e:
         raise HTTPException(status_code=500, detail=f"Processing error: {e}")
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
+
+
+@app.post("/confirm-video", response_model=ConfirmVideoResponse)
+async def confirm_video(req: ConfirmVideoRequest):
+    if req.label not in (0, 1):
+        raise HTTPException(status_code=400, detail="Label must be 0 or 1")
+    unconfirmed_path = os.path.join(
+        os.getcwd(), "data", "unconfirmed", f"{req.video_id}.mp4"
+    )
+    if not os.path.exists(unconfirmed_path):
+        raise HTTPException(status_code=404, detail="Video ID not found")
+    confirmed_dir = os.path.join(os.getcwd(), "data", "confirmed", str(req.label))
+    os.makedirs(confirmed_dir, exist_ok=True)
+    shutil.move(unconfirmed_path, os.path.join(confirmed_dir, f"{req.video_id}.mp4"))
+    return {"video_id": req.video_id, "label": req.label, "status": "confirmed"}
