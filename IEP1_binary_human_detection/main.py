@@ -168,6 +168,8 @@ def process_frame(
 
     # Inference with timing
     with INFERENCE_TIME.time():
+        if compiled_model is None:
+            raise RuntimeError("Model not loaded")
         results = compiled_model([input_blob])[compiled_model.output(0)]
 
     # Post-process
@@ -208,6 +210,8 @@ async def predict_video(file: UploadFile = File(...)):
             raise HTTPException(status_code=400, detail="Could not open video file")
         any_human = False
         # Process each frame until detection
+        if input_layer is None:
+            raise RuntimeError("Model not loaded")
         h, w = input_layer.shape[2:]
         while True:
             ret, frame = cap.read()
