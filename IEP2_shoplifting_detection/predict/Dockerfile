@@ -15,11 +15,10 @@ RUN pip install opencv-python-headless
 COPY . .
 
 # Create directories for mounted volumes
-RUN mkdir -p /data/unsupervised
 RUN mkdir -p /app/mlruns
 
 # Set volume mount points
-VOLUME ["/data/unsupervised", "/app/mlruns"]
+VOLUME ["/app/mlruns"]
 
 # Expose port for the FastAPI application
 EXPOSE 5002

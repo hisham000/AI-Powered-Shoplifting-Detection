@@ -4,8 +4,9 @@ import platform
 import shutil
 import tempfile
 import time
+import uuid
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Any, Optional
 
 import cv2
 import httpx
@@ -83,6 +84,18 @@ Instrumentator().instrument(app).expose(app)
 class ProcessVideoResult(BaseModel):
     human_detected: bool
     shoplifting_detected: bool
+    video_id: Optional[str] = None
+
+
+class ConfirmVideoRequest(BaseModel):
+    video_id: str
+    label: int
+
+
+class ConfirmVideoResponse(BaseModel):
+    video_id: str
+    label: int
+    status: str
 
 
 @app.get("/health")
@@ -302,7 +315,7 @@ async def process_video(
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp1:
             tmp_1fps_path = tmp1.name
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore
         out = cv2.VideoWriter(tmp_1fps_path, fourcc, sample_fps, (width, height))
         cap = cv2.VideoCapture(tmp_path)
         idx = 0
@@ -337,11 +350,37 @@ async def process_video(
         pred = iep2_res.get("prediction")
         if pred == 1:
             SHOPLIFTING_DETECTION_COUNTER.inc()
+            # Generate a UUID and save the video for unconfirmed shoplifting
+            video_id = str(uuid.uuid4())
+            unconfirmed_dir = os.path.join(os.getcwd(), "data", "unconfirmed")
+            os.makedirs(unconfirmed_dir, exist_ok=True)
+            shutil.copy(tmp_path, os.path.join(unconfirmed_dir, f"{video_id}.mp4"))
         elapsed = time.time() - start_time
         PROCESSING_TIME.observe(elapsed)
-        return {"human_detected": True, "shoplifting_detected": pred == 1}
+        if pred == 1:
+            return {
+                "human_detected": True,
+                "shoplifting_detected": True,
+                "video_id": video_id,
+            }
+        return {"human_detected": True, "shoplifting_detected": False}
     except ValueError as e:
         raise HTTPException(status_code=500, detail=f"Processing error: {e}")
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
+
+
+@app.post("/confirm-video", response_model=ConfirmVideoResponse)
+async def confirm_video(req: ConfirmVideoRequest):
+    if req.label not in (0, 1):
+        raise HTTPException(status_code=400, detail="Label must be 0 or 1")
+    unconfirmed_path = os.path.join(
+        os.getcwd(), "data", "unconfirmed", f"{req.video_id}.mp4"
+    )
+    if not os.path.exists(unconfirmed_path):
+        raise HTTPException(status_code=404, detail="Video ID not found")
+    confirmed_dir = os.path.join(os.getcwd(), "data", "confirmed", str(req.label))
+    os.makedirs(confirmed_dir, exist_ok=True)
+    shutil.move(unconfirmed_path, os.path.join(confirmed_dir, f"{req.video_id}.mp4"))
+    return {"video_id": req.video_id, "label": req.label, "status": "confirmed"}
