@@ -12,6 +12,7 @@ services:
       - IEP2_URL=http://iep2:5002
     volumes:
       - ./data/unconfirmed:/app/data/unconfirmed
+      - ./data/confirmed:/app/data/confirmed
     depends_on:
       - iep1
       - iep2
