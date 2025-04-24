@@ -4,8 +4,9 @@ import platform
 import shutil
 import tempfile
 import time
+import uuid
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Any, Optional
 
 import cv2
 import httpx
@@ -83,6 +84,7 @@ Instrumentator().instrument(app).expose(app)
 class ProcessVideoResult(BaseModel):
     human_detected: bool
     shoplifting_detected: bool
+    video_id: Optional[str] = None
 
 
 @app.get("/health")
@@ -337,9 +339,16 @@ async def process_video(
         pred = iep2_res.get("prediction")
         if pred == 1:
             SHOPLIFTING_DETECTION_COUNTER.inc()
+            # Generate a UUID and save the video for unconfirmed shoplifting
+            video_id = str(uuid.uuid4())
+            unconfirmed_dir = os.path.join(os.getcwd(), "data", "unconfirmed")
+            os.makedirs(unconfirmed_dir, exist_ok=True)
+            shutil.copy(tmp_path, os.path.join(unconfirmed_dir, f"{video_id}.mp4"))
         elapsed = time.time() - start_time
         PROCESSING_TIME.observe(elapsed)
-        return {"human_detected": True, "shoplifting_detected": pred == 1}
+        if pred == 1:
+            return {"human_detected": True, "shoplifting_detected": True, "video_id": video_id}
+        return {"human_detected": True, "shoplifting_detected": False}
     except ValueError as e:
         raise HTTPException(status_code=500, detail=f"Processing error: {e}")
     finally:
