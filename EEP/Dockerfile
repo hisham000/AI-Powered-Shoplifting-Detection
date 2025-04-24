@@ -16,6 +16,7 @@ ENV RUNNING_IN_DOCKER=true
 
 # Copy application files
 COPY . .
+VOLUME ["/app/data/unconfirmed"]
 
 # Expose port for the FastAPI application
 EXPOSE 8000

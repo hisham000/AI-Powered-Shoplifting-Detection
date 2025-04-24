@@ -10,6 +10,8 @@ services:
       - RUNNING_IN_DOCKER=true
       - IEP1_URL=http://iep1:5001
       - IEP2_URL=http://iep2:5002
+    volumes:
+      - ./data/unconfirmed:/app/data/unconfirmed
     depends_on:
       - iep1
       - iep2
