@@ -4,8 +4,10 @@ on:
   push:
     branches:
       - main
+      - setup-base-model
     paths:
       - 'IEP2_shoplifting_detection/train/**'
+      - .github/workflows/iep2-train-publish.yml
 
 jobs:
   build-and-push:
