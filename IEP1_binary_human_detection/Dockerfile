@@ -22,8 +22,11 @@ RUN pip install --no-cache-dir opencv-python-headless
 # Install OpenVINO development tools (includes omz_downloader)
 RUN pip install --no-cache-dir openvino-dev
 
-# Create model directory structure
+# Create model directory structure before download
 RUN mkdir -p /workspace/models
+
+# Download the person-detection-0202 FP16 model at build time
+RUN omz_downloader --name person-detection-0202 --precision FP16 --output_dir /workspace/models
 
 # Copy application code
 COPY ./main.py ./main.py

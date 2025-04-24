@@ -19,8 +19,6 @@ services:
       context: ./IEP1_binary_human_detection
     expose:
       - '5001'
-    volumes:
-      - ./IEP1_binary_human_detection/models:/workspace/models
 
   iep2:
     build:
