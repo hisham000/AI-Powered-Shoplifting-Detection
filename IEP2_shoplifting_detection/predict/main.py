@@ -4,14 +4,17 @@ import os
 os.environ["GIT_PYTHON_REFRESH"] = "quiet"
 
 import tempfile
-import uuid
 from contextlib import asynccontextmanager
-from datetime import datetime
 
 import cv2
 import mlflow
 import mlflow.keras
 import numpy as np
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from mlflow.tracking import MlflowClient
+from prometheus_client import Counter, Gauge, Histogram, Summary
+from prometheus_fastapi_instrumentator import Instrumentator
+
 from config import (
     EXPERIMENT_NAME,
     IMAGE_HEIGHT,
@@ -19,10 +22,6 @@ from config import (
     SEQUENCE_LENGTH,
     TRACKING_URI,
 )
-from fastapi import FastAPI, File, HTTPException, UploadFile
-from mlflow.tracking import MlflowClient
-from prometheus_client import Counter, Gauge, Histogram, Summary
-from prometheus_fastapi_instrumentator import Instrumentator
 
 # Prometheus metrics
 PREDICTION_COUNTER = Counter(
@@ -45,69 +44,6 @@ CONFIDENCE_GAUGE = Gauge(
 MODEL_LOADING_TIME = Summary(
     "iep2_model_loading_seconds", "Time taken to load the model"
 )
-
-# Set path to the dataset directory and unsupervised directories
-# Check if we're running in Docker (the Docker directory structure) or locally
-if os.path.exists("/data"):
-    # Docker path - use absolute path matching the Docker volume
-    DATASET_DIR = "/data"
-else:
-    # Local development path - assuming local dev is relative to current dir
-    DATASET_DIR = "data"
-
-# Define paths for unsupervised subdirectories (0 and 1)
-UNSUPERVISED_DIR = os.path.join(DATASET_DIR, "unsupervised")
-UNSUPERVISED_0_DIR = os.path.join(UNSUPERVISED_DIR, "0")
-UNSUPERVISED_1_DIR = os.path.join(UNSUPERVISED_DIR, "1")
-
-
-# Function to ensure directories exist
-def ensure_directories_exist():
-    try:
-        os.makedirs(UNSUPERVISED_0_DIR, exist_ok=True)
-        os.makedirs(UNSUPERVISED_1_DIR, exist_ok=True)
-        return UNSUPERVISED_DIR
-    except Exception as e:
-        print(f"Error with directory permissions: {str(e)}")
-        print(f"Attempted to use directory: {UNSUPERVISED_DIR}")
-        raise
-
-
-# Function to save uploaded file to appropriate directory based on prediction
-def save_uploaded_file(
-    file_content: bytes, original_filename: str, content_type: str, prediction: int
-):
-    # Create unique filename with timestamp and UUID
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    unique_id = str(uuid.uuid4())[:8]
-
-    # Get file extension from original filename or content type
-    if "." in original_filename:
-        extension = original_filename.split(".")[-1]
-    elif content_type.startswith("image/"):
-        extension = "jpg" if "jpeg" in content_type else content_type.split("/")[-1]
-    elif content_type.startswith("video/"):
-        extension = "mp4" if "mp4" in content_type else content_type.split("/")[-1]
-    else:
-        extension = "bin"  # fallback
-
-    # Create the new filename
-    new_filename = f"{timestamp}_{unique_id}.{extension}"
-
-    # Ensure directories exist
-    ensure_directories_exist()
-
-    # Determine target directory based on prediction
-    target_dir = UNSUPERVISED_0_DIR if prediction == 0 else UNSUPERVISED_1_DIR
-
-    # Full path to save file
-    file_path = os.path.join(target_dir, new_filename)
-
-    # Save file
-    with open(file_path, "wb") as f:
-        f.write(file_content)
-
-    return file_path
 
 
 # Function to retrieve the best model from MLflow based on test accuracy
@@ -178,8 +114,6 @@ def extract_frames_from_video(video_bytes: bytes) -> np.ndarray:
 async def lifespan(app: FastAPI):
     try:
         app.state.target_model = get_best_model()
-        # Ensure directories exist on startup
-        ensure_directories_exist()
     except Exception as e:
         raise RuntimeError(f"Failed to load model on startup: {e}")
     yield
