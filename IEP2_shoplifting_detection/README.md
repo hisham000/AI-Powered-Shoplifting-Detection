@@ -76,6 +76,20 @@ docker run --rm \
   shoplifting-detection-predicting
 ```
 
+## Running the prediction container with Docker from Docker Hub
+
+Pull the Docker image from Docker Hub:
+
+```bash
+docker pull jadshaker/iep1-predict:latest
+```
+
+Run the container:
+
+```bash
+docker run --rm -p 5001:5001 jadshaker/iep1-predict:latest
+```
+
 ## API Endpoints
 
 Once the prediction service is running, the following endpoints are available:
