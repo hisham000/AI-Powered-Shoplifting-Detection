@@ -24,4 +24,4 @@ jobs:
           context: ./IEP2_shoplifting_detection/predict
           file: ./IEP2_shoplifting_detection/predict/Dockerfile
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/iep2:predict-latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/iep2-predict:latest
