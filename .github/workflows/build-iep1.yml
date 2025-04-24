@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'IEP1_binary_human_detection'
+      - 'IEP1_binary_human_detection/**'
 
 jobs:
   build-and-push:
