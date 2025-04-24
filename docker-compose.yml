@@ -29,7 +29,7 @@ services:
       - '5002'
     volumes:
       - ./data/unsupervised:/data/unsupervised
-      - ./mlruns:/app/mlruns
+      - ./IEP2_shoplifting_detection/train/mlruns:/app/mlruns
 
   prometheus:
     image: prom/prometheus:latest
