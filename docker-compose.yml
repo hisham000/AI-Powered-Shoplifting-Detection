@@ -19,8 +19,6 @@ services:
       context: ./IEP1_binary_human_detection
     expose:
       - '5001'
-    volumes:
-      - ./IEP1_binary_human_detection/models:/workspace/models
 
   iep2:
     build:
@@ -29,7 +27,7 @@ services:
       - '5002'
     volumes:
       - ./data/unsupervised:/data/unsupervised
-      - ./mlruns:/app/mlruns
+      - ./IEP2_shoplifting_detection/train/mlruns:/app/mlruns
 
   prometheus:
     image: prom/prometheus:latest
