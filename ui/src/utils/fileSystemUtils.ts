@@ -61,21 +61,15 @@ async function withEEPCheck<T>(
 }
 
 /**
- * Reads video files from a directory using the server endpoint
+ * Reads video files from the CCTV directory using the server endpoint
  * This is needed because browsers cannot directly access the file system
  *
- * @param directoryPath Path to the directory to read
  * @returns Array of full file paths to video files
  */
-export async function readVideoFilesFromDirectory(
-  directoryPath: string
-): Promise<string[]> {
+export async function readVideoFilesFromDirectory(): Promise<string[]> {
   try {
     return await withEEPCheck(async () => {
-      const response = await axios.get(`${FILE_SERVER_URL}/readDirectory`, {
-        params: { path: directoryPath },
-      });
-
+      const response = await axios.get(`${FILE_SERVER_URL}/readDirectory`);
       return response.data.files || [];
     });
   } catch (error) {
@@ -111,21 +105,18 @@ export async function getVideoFile(
 }
 
 /**
- * Fetches changes in a directory since the last check
+ * Fetches changes in the CCTV directory since the last check
  *
- * @param directoryPath Path to monitor
  * @param lastCheckedTime Timestamp of the last check
  * @returns Array of new or modified files
  */
 export async function getDirectoryChanges(
-  directoryPath: string,
   lastCheckedTime: Date
 ): Promise<string[]> {
   try {
     return await withEEPCheck(async () => {
       const response = await axios.get(`${FILE_SERVER_URL}/getChanges`, {
         params: {
-          path: directoryPath,
           since: lastCheckedTime.toISOString(),
         },
       });

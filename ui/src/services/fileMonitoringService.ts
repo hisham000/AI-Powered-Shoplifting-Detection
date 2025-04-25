@@ -9,10 +9,12 @@ import {
   isEEPOnline,
 } from '../utils/fileSystemUtils';
 
+// Fixed CCTV directory path that matches the backend configuration
+const CCTV_DIR = "/CCTV";
+
 // Service for monitoring folder for new CCTV footage
 export class FileMonitoringService {
   private isWatching: boolean = false;
-  private folderPath: string = '';
   private intervalId: number | null = null;
   private processedFiles: Set<string> = new Set();
   private lastCheckedTime: Date = new Date();
@@ -44,20 +46,9 @@ export class FileMonitoringService {
     );
   }
 
-  // Set up the folder path to monitor
-  setup(folderPath: string) {
-    this.folderPath = folderPath;
-
-    storageService.saveFolderConfig(folderPath);
-    console.log(
-      `Set up monitoring for folder: ${folderPath} with interval: ${this.checkInterval}ms`
-    );
-    return this;
-  }
-
   // Start watching for new files
   startWatching() {
-    if (this.isWatching || !this.folderPath) return this;
+    if (this.isWatching) return this;
 
     this.isWatching = true;
     this.lastCheckedTime = new Date();
@@ -83,7 +74,7 @@ export class FileMonitoringService {
     );
 
     console.log(
-      `Started monitoring folder: ${this.folderPath} with interval: ${this.checkInterval}ms`
+      `Started monitoring CCTV directory with interval: ${this.checkInterval}ms`
     );
     return this;
   }
@@ -98,7 +89,7 @@ export class FileMonitoringService {
     }
 
     this.isWatching = false;
-    console.log(`Stopped monitoring folder: ${this.folderPath}`);
+    console.log(`Stopped monitoring CCTV directory`);
     return this;
   }
 
@@ -124,7 +115,7 @@ export class FileMonitoringService {
   getStatus() {
     return {
       isWatching: this.isWatching,
-      folderPath: this.folderPath,
+      folderPath: CCTV_DIR,
       processedFilesCount: this.processedFiles.size,
       lastCheckedTime: this.lastCheckedTime,
       checkInterval: this.checkInterval,
@@ -146,7 +137,7 @@ export class FileMonitoringService {
 
   // Check for new files in the monitored directory
   private async checkForNewFiles() {
-    if (!this.isWatching || !this.folderPath) {
+    if (!this.isWatching) {
       return;
     }
 
@@ -161,13 +152,10 @@ export class FileMonitoringService {
       }
 
       // Method 1: Check for changes since last check
-      const changedFiles = await getDirectoryChanges(
-        this.folderPath,
-        this.lastCheckedTime
-      );
+      const changedFiles = await getDirectoryChanges(this.lastCheckedTime);
 
       // Method 2: Get all current files and compare with previous list
-      this.currentVideos = await readVideoFilesFromDirectory(this.folderPath);
+      this.currentVideos = await readVideoFilesFromDirectory();
 
       // Find new files from both methods (avoiding duplicates)
       const newFilesFromChanges = changedFiles.filter(
