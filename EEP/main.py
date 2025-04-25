@@ -399,7 +399,7 @@ async def confirm_video(req: ConfirmVideoRequest):
     video_path = os.path.join(unconfirmed_dir, video_file)
 
     # Move to confirmed directory
-    confirmed_dir = os.path.join(os.getcwd(), "data", "confirmed", str(req.label))
+    confirmed_dir = os.path.join(os.getcwd(), "data", str(req.label))
     os.makedirs(confirmed_dir, exist_ok=True)
 
     # Move with the original filename
