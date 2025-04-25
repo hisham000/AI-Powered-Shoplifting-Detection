@@ -95,7 +95,7 @@ spec:
     kind: Deployment
     name: prometheus # Target the Prometheus deployment
   minReplicas: 1
-  maxReplicas: 3 # Allow scaling up to 3 replicas
+  maxReplicas: 1 # Allow scaling up to 3 replicas
   metrics:
   - type: Resource
     resource:
