@@ -20,11 +20,11 @@ spec:
         - containerPort: 5001
         resources:
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "2Gi" # Increased memory limit
+            cpu: "1" # Increased CPU limit
           requests:
-            memory: "256Mi"
-            cpu: "200m"
+            memory: "1Gi" # Increased memory request
+            cpu: "500m" # Increased CPU request
 ---
 apiVersion: v1
 kind: Service
@@ -38,3 +38,23 @@ spec:
   - port: 5001
     targetPort: 5001
   type: ClusterIP
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: iep1-hpa
+  namespace: eece-503n
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: iep1 # Target the iep1 deployment
+  minReplicas: 1
+  maxReplicas: 3 # Allow scaling up to 3 replicas
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70 # Target 70% CPU utilization

@@ -20,20 +20,19 @@ spec:
         - containerPort: 5002
         volumeMounts:
         - name: mlruns
-          mountPath: /app/mlruns # This path must match the path expected by the application
+          mountPath: /app/mlruns
         resources:
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "4Gi"  # Increased for ML model loading
+            cpu: "2"       # Increased for ML inference
           requests:
-            memory: "256Mi"
-            cpu: "200m"
+            memory: "2Gi"  # Increased minimum memory
+            cpu: "1"       # Increased minimum CPU
       volumes:
       - name: mlruns
         hostPath:
-          # Ensure this path exists on the node and contains the mlruns data
           path: /home/hisham/Desktop/503n/EECE-503N-Project/IEP2_shoplifting_detection/train/mlruns
-          type: DirectoryOrCreate # Use Directory if you are sure it exists, DirectoryOrCreate otherwise
+          type: DirectoryOrCreate
 ---
 apiVersion: v1
 kind: Service
@@ -47,3 +46,23 @@ spec:
   - port: 5002
     targetPort: 5002
   type: ClusterIP
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: iep2-hpa
+  namespace: eece-503n
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: iep2
+  minReplicas: 1
+  maxReplicas: 3
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70

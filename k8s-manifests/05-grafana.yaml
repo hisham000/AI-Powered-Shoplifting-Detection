@@ -67,11 +67,11 @@ spec:
           mountPath: /var/lib/grafana/dashboards
         resources:
           limits:
-            memory: "512Mi"
-            cpu: "300m"
+            memory: "1Gi"  # Increased memory limit
+            cpu: "500m"    # Increased CPU limit
           requests:
-            memory: "256Mi"
-            cpu: "100m"
+            memory: "512Mi"  # Moderate memory request increase
+            cpu: "200m"     # Moderate CPU request increase
       volumes:
       - name: grafana-datasources
         configMap:

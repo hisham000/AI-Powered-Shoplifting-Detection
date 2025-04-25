@@ -32,11 +32,11 @@ spec:
           mountPath: /app/data/confirmed
         resources:
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "2Gi"  # Increased memory limit
+            cpu: "1"       # Increased CPU limit
           requests:
-            memory: "256Mi"
-            cpu: "200m"
+            memory: "1Gi"  # Increased memory request 
+            cpu: "500m"    # Increased CPU request
       volumes:
       - name: unconfirmed-data
         hostPath:
@@ -59,3 +59,23 @@ spec:
   - port: 8000
     targetPort: 8000
   type: NodePort
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: eep-hpa
+  namespace: eece-503n
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: eep
+  minReplicas: 1
+  maxReplicas: 3
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
