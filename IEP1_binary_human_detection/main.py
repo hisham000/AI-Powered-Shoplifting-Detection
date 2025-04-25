@@ -12,7 +12,7 @@ import numpy as np
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 from openvino import Core  # type: ignore[import]
-from prometheus_client import Counter, Gauge, Histogram, Summary
+from prometheus_client import Counter, Histogram, Summary
 from prometheus_fastapi_instrumentator import Instrumentator
 
 # Prometheus metrics
@@ -27,9 +27,20 @@ INFERENCE_TIME = Histogram(
     "Time spent on inference",
     buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0],
 )
-CONFIDENCE_GAUGE = Gauge("iep1_detection_confidence", "Last detection confidence score")
+# Summary for detection confidence, tracks average via sum and count
+DETECTION_CONFIDENCE = Summary(
+    "iep1_detection_confidence", "Distribution of detection confidence scores"
+)
 MODEL_LOADING_TIME = Summary(
     "iep1_model_loading_seconds", "Time taken to load the model"
+)
+
+# Health check metrics
+IEP1_HEALTH_REQUESTS = Counter(
+    "iep1_health_requests_total", "Number of /health requests received"
+)
+IEP1_HEALTH_FAILURES = Counter(
+    "iep1_health_failures_total", "Number of /health requests with error status"
 )
 
 # Path to model (inside container)
@@ -132,11 +143,16 @@ Instrumentator().instrument(app).expose(app)
 
 @app.get("/health")
 def health_check():
-    return {
-        "status": "healthy",
-        "model_path": MODEL_XML,
-        "model_exists": os.path.exists(MODEL_XML),
-    }
+    IEP1_HEALTH_REQUESTS.inc()
+    try:
+        return {
+            "status": "healthy",
+            "model_path": MODEL_XML,
+            "model_exists": os.path.exists(MODEL_XML),
+        }
+    except Exception:
+        IEP1_HEALTH_FAILURES.inc()
+        raise
 
 
 @app.post("/check-model")
@@ -185,7 +201,7 @@ def process_frame(
     # Update metrics
     if human_detected:
         HUMAN_DETECTION_COUNTER.inc()
-        CONFIDENCE_GAUGE.set(highest_conf)
+        DETECTION_CONFIDENCE.observe(highest_conf)
 
     return {
         "human_detected": human_detected,
