@@ -30,9 +30,21 @@ spec:
             cpu: "1"       # Increased minimum CPU
       volumes:
       - name: mlruns
-        hostPath:
-          path: /home/hisham/Desktop/503n/EECE-503N-Project/IEP2_shoplifting_detection/train/mlruns
-          type: DirectoryOrCreate
+        persistentVolumeClaim:
+          claimName: mlruns-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mlruns-pvc
+  namespace: eece-503n
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 5Gi  # Updated to match the PV capacity
+  storageClassName: local-storage
 ---
 apiVersion: v1
 kind: Service
