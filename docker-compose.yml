@@ -1,6 +1,21 @@
-version: '3.8'
-
 services:
+  ui:
+    build:
+      context: ./ui
+    ports:
+      - '80:80'
+    depends_on:
+      - eep
+      - file-hosting
+
+  file-hosting:
+    build:
+      context: ./file_hosting
+    ports:
+      - '9000:9000'
+    volumes:
+      - ./CCTV:/CCTV
+
   eep:
     build:
       context: ./EEP
@@ -11,11 +26,12 @@ services:
       - IEP1_URL=http://iep1:5001
       - IEP2_URL=http://iep2:5002
     volumes:
-      - ./data/unconfirmed:/app/data/unconfirmed
-      - ./data/confirmed:/app/data/confirmed
+      - ./data:/app/data
     depends_on:
       - iep1
       - iep2
+    expose:
+      - '8000'
 
   iep1:
     build:
@@ -29,7 +45,7 @@ services:
     expose:
       - '5002'
     volumes:
-      - ./IEP2_shoplifting_detection/train/mlruns:/app/mlruns
+      - ./mlruns:/app/mlruns
 
   prometheus:
     image: prom/prometheus:latest
