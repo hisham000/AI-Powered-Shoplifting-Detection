@@ -186,3 +186,6 @@ mlruns/
 
 # PyTorch weights & checkpoints
 *.pt
+
+# CCTV
+CCTV/
