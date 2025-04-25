@@ -3,8 +3,7 @@ import axios from 'axios';
 // The backend server URL that will provide file system access
 const FILE_SERVER_URL = 'http://127.0.0.1:9000';
 // The EEP service URL for health checks
-// const EEP_SERVICE_URL = process.env.EEP_URL || 'http://127.0.0.1:8000';
-const EEP_SERVICE_URL = 'http://eep:8000';
+const EEP_SERVICE_URL = process.env.REACT_APP_EEP_URL || 'http://127.0.0.1:8000';
 
 // Maximum number of retries when EEP is offline
 const MAX_RETRIES = 3;

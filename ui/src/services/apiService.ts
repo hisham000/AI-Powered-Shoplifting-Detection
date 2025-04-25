@@ -1,8 +1,8 @@
 import axios from 'axios';
 import { ProcessVideoResponse } from '../models/types';
 
-// Use environment variable EEP_URL if available, otherwise use default
-const API_BASE_URL = process.env.EEP_URL || 'http://127.0.0.1:8000';
+// Use environment variable with REACT_APP_ prefix if available, otherwise use default
+const API_BASE_URL = process.env.REACT_APP_EEP_URL || 'http://127.0.0.1:8000';
 const FILE_SERVER_URL = 'http://127.0.0.1:9000'; // File server URL
 
 // Service for handling API calls to the EEP
