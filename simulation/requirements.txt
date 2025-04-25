@@ -4,10 +4,13 @@ decorator==4.4.2
 idna==3.10
 imageio==2.37.0
 imageio-ffmpeg==0.6.0
+kagglehub==0.3.12
 moviepy==1.0.3
 numpy==2.2.5
+packaging==25.0
 pillow==11.2.1
 proglog==0.1.11
+PyYAML==6.0.2
 requests==2.32.3
 tqdm==4.67.1
 urllib3==2.4.0
