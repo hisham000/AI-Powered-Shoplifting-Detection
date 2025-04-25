@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iep1
+  namespace: eece-503n
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: iep1
+  template:
+    metadata:
+      labels:
+        app: iep1
+    spec:
+      containers:
+      - name: iep1
+        image: jadshaker/iep1:latest
+        ports:
+        - containerPort: 5001
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iep1
+  namespace: eece-503n
+spec:
+  selector:
+    app: iep1
+  ports:
+  - port: 5001
+    targetPort: 5001
+  type: ClusterIP
