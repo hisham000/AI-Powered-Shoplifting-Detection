@@ -17,81 +17,79 @@ CHUNK_DURATION = 5  # seconds
 
 
 def download_and_prepare_dataset():
-    """Download dataset from Kaggle and prepare the video files if data/raw is empty"""
-    print("📥 Downloading dataset from Kaggle...")
-    path = kagglehub.dataset_download("mateohervas/dcsass-dataset")
+    # Download the dataset
+    print("⬇️ Downloading dataset from Kaggle...")
+    dataset_path = kagglehub.dataset_download("mateohervas/dcsass-dataset")
 
-    print("🔄 Processing downloaded videos...")
-    # Get all video files from the downloaded dataset
-    shoplifting_0_dir = Path(f"{path}/DCSASS Dataset/Shoplifting/0")
-    shoplifting_1_dir = Path(f"{path}/DCSASS Dataset/Shoplifting/1")
-
-    # Create raw directory if it doesn't exist
+    # Create destination directory if it doesn't exist
     SOURCE_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Dictionary to store clips with the same ID
-    video_groups = {}
+    # Get the path to shoplifting videos
+    shoplifting_path = Path(dataset_path) / "DCSASS Dataset" / "Shoplifting"
 
-    # Process videos from both directories
-    for directory in [shoplifting_0_dir, shoplifting_1_dir]:
-        if not directory.exists():
+    if not shoplifting_path.exists():
+        print(f"❌ Path not found: {shoplifting_path}")
+        return
+
+    print("🔄 Processing videos...")
+
+    # Iterate through all the directories matching the pattern Shoplifting*_x264.mp4
+    for dir_path in shoplifting_path.glob("Shoplifting*_x264.mp4"):
+        # Extract the index from directory name
+        match = re.search(
+            r"Shoplifting(\d+(?:\.\d+)?)_x264\.mp4", Path(str(dir_path)).name
+        )
+        if not match:
             continue
 
-        for video_file in directory.glob("*.mp4"):
-            # Extract the pattern Shoplifting{i:.3f}x264{j}.mp4
-            match = re.match(r"Shoplifting(\d{3})x264\d+\.mp4", video_file.name)
-            if match:
-                shoplifting_id = match.group(1)
-                if shoplifting_id not in video_groups:
-                    video_groups[shoplifting_id] = []
-                video_groups[shoplifting_id].append(video_file)
+        index = match.group(1)
+        output_filename = f"Shoplifting{index}.mp4"
 
-    # Concatenate videos with the same ID
-    for shoplifting_id, video_files in video_groups.items():
+        # Get all the video files in this directory
+        video_files = list(dir_path.glob(f"Shoplifting{index}_x264_*.mp4"))
+
         if not video_files:
+            print(f"⚠️ No video files found in {dir_path}")
             continue
 
-        output_path = SOURCE_DIR / f"Shoplifting{shoplifting_id}.mp4"
-
-        # Skip if already processed
-        if output_path.exists():
-            continue
+        print(f"🎬 Combining videos for {dir_path.name}...")
 
         try:
-            # Sort files to ensure proper ordering
-            video_files.sort(key=lambda x: str(x))
+            # Sort videos by their index j
+            video_files.sort(
+                key=lambda x: int(re.search(r"_(\d+)\.mp4$", x.name).group(1))
+            )
 
-            # Load clips
+            # Load all video clips
             clips = []
             for video_file in video_files:
-                try:
-                    clip = VideoFileClip(str(video_file))
-                    clips.append(clip)
-                except Exception as e:
-                    print(f"Error loading {video_file}: {e}")
+                clip = VideoFileClip(str(video_file))
+                clips.append(clip)
 
-            if clips:
-                # Concatenate clips
-                final_clip = concatenate_videoclips(clips)
-                # Save concatenated clip
-                final_clip.write_videofile(
-                    str(output_path),
-                    codec="libx264",
-                    audio_codec="aac",
-                    verbose=False,
-                    logger=None,
-                )
-                # Close clips to free resources
-                final_clip.close()
-                for clip in clips:
-                    clip.close()
+            # Concatenate all clips
+            final_clip = concatenate_videoclips(clips)
 
-                print(f"✅ Created {output_path}")
+            # Write the concatenated clip to the output directory
+            output_path = SOURCE_DIR / output_filename
+            final_clip.write_videofile(
+                str(output_path),
+                codec="libx264",
+                audio_codec="aac" if final_clip.audio else None,
+                verbose=False,
+                logger=None,
+            )
+
+            # Close all clips to free up resources
+            for clip in clips:
+                clip.close()
+            final_clip.close()
+
+            print(f"✅ Created {output_path}")
 
         except Exception as e:
-            print(f"❌ Error processing Shoplifting{shoplifting_id}: {e}")
+            print(f"❌ Error processing {dir_path}: {e}")
 
-    print("✅ Dataset preparation complete")
+    print("🎉 Dataset preparation complete!")
 
 
 def get_random_clip_segment(video_path, duration):
