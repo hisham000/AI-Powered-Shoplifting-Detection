@@ -9,11 +9,11 @@ from typing import Any, Optional
 
 import cv2
 import httpx
-from fastapi import FastAPI, File, HTTPException, Query, UploadFile, Form
+from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import Counter, Gauge, Histogram
 from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel
-from fastapi.middleware.cors import CORSMiddleware
 
 # Prometheus metrics
 VIDEO_PROCESSING_COUNTER = Counter(

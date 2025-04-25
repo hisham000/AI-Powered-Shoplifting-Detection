@@ -1,13 +1,12 @@
 import random
-import time
-import os
 import re
-from pathlib import Path
+import time
 from datetime import datetime
-from moviepy.editor import VideoFileClip, concatenate_videoclips
+from pathlib import Path
 
 # Added import for Kaggle dataset download
 import kagglehub
+from moviepy.editor import VideoFileClip, concatenate_videoclips
 
 # -------- CONFIG --------
 SOURCE_DIR = Path("/data/raw")  # Folder with your video pool
@@ -21,47 +20,47 @@ def download_and_prepare_dataset():
     """Download dataset from Kaggle and prepare the video files if data/raw is empty"""
     print("📥 Downloading dataset from Kaggle...")
     path = kagglehub.dataset_download("mateohervas/dcsass-dataset")
-    
+
     print("🔄 Processing downloaded videos...")
     # Get all video files from the downloaded dataset
     shoplifting_0_dir = Path(f"{path}/DCSASS Dataset/Shoplifting/0")
     shoplifting_1_dir = Path(f"{path}/DCSASS Dataset/Shoplifting/1")
-    
+
     # Create raw directory if it doesn't exist
     SOURCE_DIR.mkdir(parents=True, exist_ok=True)
-    
+
     # Dictionary to store clips with the same ID
     video_groups = {}
-    
+
     # Process videos from both directories
     for directory in [shoplifting_0_dir, shoplifting_1_dir]:
         if not directory.exists():
             continue
-            
+
         for video_file in directory.glob("*.mp4"):
             # Extract the pattern Shoplifting{i:.3f}x264{j}.mp4
-            match = re.match(r'Shoplifting(\d{3})x264\d+\.mp4', video_file.name)
+            match = re.match(r"Shoplifting(\d{3})x264\d+\.mp4", video_file.name)
             if match:
                 shoplifting_id = match.group(1)
                 if shoplifting_id not in video_groups:
                     video_groups[shoplifting_id] = []
                 video_groups[shoplifting_id].append(video_file)
-    
+
     # Concatenate videos with the same ID
     for shoplifting_id, video_files in video_groups.items():
         if not video_files:
             continue
-        
+
         output_path = SOURCE_DIR / f"Shoplifting{shoplifting_id}.mp4"
-        
+
         # Skip if already processed
         if output_path.exists():
             continue
-            
+
         try:
             # Sort files to ensure proper ordering
             video_files.sort(key=lambda x: str(x))
-            
+
             # Load clips
             clips = []
             for video_file in video_files:
@@ -70,23 +69,28 @@ def download_and_prepare_dataset():
                     clips.append(clip)
                 except Exception as e:
                     print(f"Error loading {video_file}: {e}")
-            
+
             if clips:
                 # Concatenate clips
                 final_clip = concatenate_videoclips(clips)
                 # Save concatenated clip
-                final_clip.write_videofile(str(output_path), codec="libx264", 
-                                          audio_codec="aac", verbose=False, logger=None)
+                final_clip.write_videofile(
+                    str(output_path),
+                    codec="libx264",
+                    audio_codec="aac",
+                    verbose=False,
+                    logger=None,
+                )
                 # Close clips to free resources
                 final_clip.close()
                 for clip in clips:
                     clip.close()
-                    
+
                 print(f"✅ Created {output_path}")
-            
+
         except Exception as e:
             print(f"❌ Error processing Shoplifting{shoplifting_id}: {e}")
-    
+
     print("✅ Dataset preparation complete")
 
 
@@ -114,7 +118,7 @@ def simulate_camera_feeds():
     if not SOURCE_DIR.exists() or not any(SOURCE_DIR.iterdir()):
         print("📁 Source directory is empty. Downloading dataset from Kaggle...")
         download_and_prepare_dataset()
-    
+
     video_pool = list(SOURCE_DIR.glob("*.mp4"))
     if not video_pool:
         print("⚠️ No videos found in source folder even after download attempt.")

@@ -3,8 +3,8 @@ import os
 from datetime import datetime
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
 # Define the constant for CCTV directory path
 CCTV_DIR = "/CCTV"
