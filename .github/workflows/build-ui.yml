@@ -1,11 +1,10 @@
-name: Build and Push Simulation Docker Image
+name: Build and Push UI Docker Image
 
 on:
   push:
     branches: [main]
     paths:
-      - 'simulation/**'
-      - .github/workflows/build-simulation.yml
+      - 'ui/**'
 
 jobs:
   build-and-push:
@@ -19,10 +18,10 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push Simulation image
+      - name: Build and push UI image
         uses: docker/build-push-action@v4
         with:
-          context: ./simulation
-          file: ./simulation/Dockerfile
+          context: ./ui
+          file: ./ui/Dockerfile
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/simulation:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/ui:latest

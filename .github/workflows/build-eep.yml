@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'EEP/**'
+      - .github/workflows/build-eep.yml
 
 jobs:
   build-and-push:

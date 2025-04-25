@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'IEP2_shoplifting_detection/train/**'
+      - .github/workflows/build-iep2-train.yml
 
 jobs:
   build-and-push:
