@@ -9,18 +9,15 @@ from typing import Any, Optional
 
 import cv2
 import httpx
-from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from prometheus_client import Counter, Gauge, Histogram
+from prometheus_client import Counter, Histogram
 from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel
 
 # Prometheus metrics
 VIDEO_PROCESSING_COUNTER = Counter(
     "eep_video_processed_total", "Number of videos processed"
-)
-SEGMENT_PROCESSING_COUNTER = Counter(
-    "eep_segment_processed_total", "Number of segments processed"
 )
 HUMAN_DETECTION_COUNTER = Counter(
     "eep_human_detected_total", "Number of segments with humans detected"
@@ -33,7 +30,22 @@ PROCESSING_TIME = Histogram(
     "Time spent processing videos",
     buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, 120.0],
 )
-SAMPLE_FPS_GAUGE = Gauge("eep_sample_fps", "Sampling FPS used for IEP1 requests")
+# Constant sampling FPS, change here only
+SAMPLE_FPS = 4
+# Confirmation counters
+CONFIRM_CORRECT_COUNTER = Counter(
+    "eep_confirm_correct_total", "Number of correct confirmations (label=1)"
+)
+CONFIRM_INCORRECT_COUNTER = Counter(
+    "eep_confirm_incorrect_total", "Number of incorrect confirmations (label=0)"
+)
+# Health check counters
+EEP_HEALTH_REQUESTS = Counter(
+    "eep_health_requests_total", "Number of /health requests received"
+)
+EEP_HEALTH_FAILURES = Counter(
+    "eep_health_failures_total", "Number of /health requests with degraded status"
+)
 
 # Determine if running inside Docker by checking for the DOCKER environment variable
 # or by checking if a /.dockerenv file exists (a common Docker indicator)
@@ -108,6 +120,7 @@ class ConfirmVideoResponse(BaseModel):
 @app.get("/health")
 async def health_check():
     """Health check endpoint for all services"""
+    EEP_HEALTH_REQUESTS.inc()
     # Initialize services status
     services_status = {
         "EEP": {"status": "healthy"},
@@ -158,6 +171,8 @@ async def health_check():
         services_status["IEP2"] = {"status": "unhealthy", "error": str(e)}
         overall_status = "degraded"
 
+    if overall_status != "healthy":
+        EEP_HEALTH_FAILURES.inc()
     return {
         "status": overall_status,
         "timestamp": str(datetime.datetime.now()),
@@ -297,17 +312,15 @@ async def process_with_iep2(file_path: str) -> dict[str, Any]:
 async def process_video(
     file: UploadFile = File(...),
     video_id: str = Form(..., description="Client-generated video ID"),
-    sample_fps: int = Query(
-        4, ge=1, description="Frames per second to sample for IEP1"
-    ),
 ):
     """
     Send 1fps video to IEP1; if human detected, send original video to IEP2.
     Returns human_detected and optional shoplifting prediction.
     """
     VIDEO_PROCESSING_COUNTER.inc()
-    # Export sampling fps and start timer for monitoring
-    SAMPLE_FPS_GAUGE.set(sample_fps)
+    # sample FPS is constant
+    sample_fps = SAMPLE_FPS
+    # Start timer for monitoring
     start_time = time.time()
     # Save uploaded video
     with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp:
@@ -405,4 +418,9 @@ async def confirm_video(req: ConfirmVideoRequest):
     # Move with the original filename
     shutil.move(video_path, os.path.join(confirmed_dir, video_file))
 
+    # update confirmation counters
+    if req.label == 1:
+        CONFIRM_CORRECT_COUNTER.inc()
+    else:
+        CONFIRM_INCORRECT_COUNTER.inc()
     return {"video_id": req.video_id, "label": req.label, "status": "confirmed"}
