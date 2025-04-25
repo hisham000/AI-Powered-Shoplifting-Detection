@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'file_hosting/**'
+      - .github/workflows/build-file-hosting.yml
 
 jobs:
   build-and-push:

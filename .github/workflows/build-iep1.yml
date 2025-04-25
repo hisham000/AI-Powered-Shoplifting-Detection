@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'IEP1_binary_human_detection/**'
+      - .github/workflows/build-iep1.yml
 
 jobs:
   build-and-push:
