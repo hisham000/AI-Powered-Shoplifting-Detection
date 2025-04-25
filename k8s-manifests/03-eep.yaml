@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eep
+  namespace: eece-503n
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: eep
+  template:
+    metadata:
+      labels:
+        app: eep
+    spec:
+      containers:
+      - name: eep
+        image: jadshaker/eep:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: RUNNING_IN_DOCKER
+          value: "true"
+        - name: IEP1_URL
+          value: "http://iep1.eece-503n.svc.cluster.local:5001"
+        - name: IEP2_URL
+          value: "http://iep2.eece-503n.svc.cluster.local:5002"
+        volumeMounts:
+        - name: unconfirmed-data
+          mountPath: /app/data/unconfirmed
+        - name: confirmed-data
+          mountPath: /app/data/confirmed
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+      volumes:
+      - name: unconfirmed-data
+        hostPath:
+          path: /home/hisham/Desktop/503n/EECE-503N-Project/data/unconfirmed
+          type: DirectoryOrCreate
+      - name: confirmed-data
+        hostPath:
+          path: /home/hisham/Desktop/503n/EECE-503N-Project/data/confirmed
+          type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: eep
+  namespace: eece-503n
+spec:
+  selector:
+    app: eep
+  ports:
+  - port: 8000
+    targetPort: 8000
+  type: NodePort

@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iep2
+  namespace: eece-503n
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: iep2
+  template:
+    metadata:
+      labels:
+        app: iep2
+    spec:
+      containers:
+      - name: iep2
+        image: jadshaker/iep2-predict:latest
+        ports:
+        - containerPort: 5002
+        volumeMounts:
+        - name: mlruns
+          mountPath: /app/mlruns # This path must match the path expected by the application
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+      volumes:
+      - name: mlruns
+        hostPath:
+          # Ensure this path exists on the node and contains the mlruns data
+          path: /home/hisham/Desktop/503n/EECE-503N-Project/IEP2_shoplifting_detection/train/mlruns
+          type: DirectoryOrCreate # Use Directory if you are sure it exists, DirectoryOrCreate otherwise
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iep2
+  namespace: eece-503n
+spec:
+  selector:
+    app: iep2
+  ports:
+  - port: 5002
+    targetPort: 5002
+  type: ClusterIP
