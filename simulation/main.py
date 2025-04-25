@@ -5,8 +5,8 @@ from datetime import datetime
 from moviepy.editor import VideoFileClip
 
 # -------- CONFIG --------
-SOURCE_DIR = Path("./data")  # Folder with your video pool
-DEST_DIR = Path("./CCTV")  # Folder where CCTV-style folders go
+SOURCE_DIR = Path("/data/raw")  # Folder with your video pool
+DEST_DIR = Path("/CCTV")  # Folder where CCTV-style folders go
 NUM_CAMERAS = 4
 CHUNK_DURATION = 5  # seconds
 # ------------------------
