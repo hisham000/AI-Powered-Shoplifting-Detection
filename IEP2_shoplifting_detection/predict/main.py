@@ -19,7 +19,7 @@ from config import (
 )
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from mlflow.tracking import MlflowClient
-from prometheus_client import Counter, Gauge, Histogram, Summary
+from prometheus_client import Counter, Histogram, Summary
 from prometheus_fastapi_instrumentator import Instrumentator
 
 # Prometheus metrics
@@ -37,11 +37,20 @@ INFERENCE_TIME = Histogram(
     "Time spent on inference",
     buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 2.0, 5.0],
 )
-CONFIDENCE_GAUGE = Gauge(
-    "iep2_shoplifting_confidence", "Last shoplifting prediction confidence score"
+# Summary for shoplifting confidence distribution
+CONFIDENCE_SUMMARY = Summary(
+    "iep2_shoplifting_confidence",
+    "Distribution of shoplifting prediction confidence scores",
 )
 MODEL_LOADING_TIME = Summary(
     "iep2_model_loading_seconds", "Time taken to load the model"
+)
+# Health check metrics
+IEP2_HEALTH_REQUESTS = Counter(
+    "iep2_health_requests_total", "Number of /health requests received"
+)
+IEP2_HEALTH_FAILURES = Counter(
+    "iep2_health_failures_total", "Number of /health requests with error status"
 )
 
 
@@ -127,7 +136,13 @@ Instrumentator().instrument(app).expose(app)
 
 @app.get("/health")
 def health_check() -> dict[str, str]:
-    return {"status": "healthy"}
+    IEP2_HEALTH_REQUESTS.inc()
+    try:
+        status = {"status": "healthy"}
+        return status
+    except Exception:
+        IEP2_HEALTH_FAILURES.inc()
+        raise
 
 
 @app.post("/predict")
@@ -172,7 +187,7 @@ async def predict(file: UploadFile = File(...)) -> dict[str, int]:
     else:  # Normal behavior detected
         NEGATIVE_DETECTION_COUNTER.inc()
 
-    # Update confidence gauge
-    CONFIDENCE_GAUGE.set(confidence)
+    # Update confidence summary for average
+    CONFIDENCE_SUMMARY.observe(confidence)
 
     return {"prediction": label}
