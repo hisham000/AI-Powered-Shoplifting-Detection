@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Form, Button, Card, Alert, Row, Col, Badge } from 'react-bootstrap';
+import { Button, Card, Alert, Row, Col, Badge } from 'react-bootstrap';
 import { FileMonitoringService } from '../services/fileMonitoringService';
 import { storageService } from '../services/storageService';
+
+// Fixed CCTV directory path
+const CCTV_DIR = "/CCTV";
 
 interface FolderMonitorProps {
   monitorService: FileMonitoringService;
 }
 
 const FolderMonitor: React.FC<FolderMonitorProps> = ({ monitorService }) => {
-  const [folderPath, setFolderPath] = useState<string>('');
   const [isWatching, setIsWatching] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -16,12 +18,6 @@ const FolderMonitor: React.FC<FolderMonitorProps> = ({ monitorService }) => {
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
 
   useEffect(() => {
-    // Load saved folder path from local storage if available
-    const savedPath = storageService.getFolderConfig();
-    if (savedPath) {
-      setFolderPath(savedPath);
-    }
-
     // Check service status on interval
     const intervalId = setInterval(() => {
       const status = monitorService.getStatus();
@@ -34,13 +30,8 @@ const FolderMonitor: React.FC<FolderMonitorProps> = ({ monitorService }) => {
   }, [monitorService]);
 
   const handleStartMonitoring = () => {
-    if (!folderPath) {
-      setError('Please enter a valid folder path');
-      return;
-    }
-
     try {
-      monitorService.setup(folderPath).startWatching();
+      monitorService.startWatching();
       setIsWatching(true);
       setError(null);
       setSuccess('Monitoring started successfully');
@@ -96,60 +87,51 @@ const FolderMonitor: React.FC<FolderMonitorProps> = ({ monitorService }) => {
         {error && <Alert variant="danger">{error}</Alert>}
         {success && <Alert variant="success">{success}</Alert>}
         
-        <Form>
-          <Form.Group className="mb-3">
-            <Form.Label>CCTV Footage Folder Path</Form.Label>
-            <Form.Control
-              type="text"
-              placeholder="Enter the path to your CCTV footage folder (e.g., /path/to/CCTV)"
-              value={folderPath}
-              onChange={(e) => setFolderPath(e.target.value)}
-              disabled={isWatching}
-            />
-            <Form.Text className="text-muted">
-              Expected format: CCTV/cam#/YYYY-MM-DD/HH/YYYY-MM-DD_HH-MM-SS_cam#.mp4
-            </Form.Text>
-          </Form.Group>
+        <div className="mb-3">
+          <h6>Monitoring Directory</h6>
+          <p className="text-primary fw-bold">{CCTV_DIR}</p>
+          <p className="text-muted small">
+            The system is configured to automatically monitor the CCTV directory for new video files.
+          </p>
+        </div>
 
-          <Row className="align-items-center mb-3">
-            <Col>
-              <div className="d-flex gap-2">
-                {!isWatching ? (
-                  <Button 
-                    variant="primary" 
-                    onClick={handleStartMonitoring}
-                    disabled={!folderPath}
-                  >
-                    Start Monitoring
-                  </Button>
-                ) : (
-                  <Button 
-                    variant="danger" 
-                    onClick={handleStopMonitoring}
-                  >
-                    Stop Monitoring
-                  </Button>
-                )}
-                
+        <Row className="align-items-center mb-3">
+          <Col>
+            <div className="d-flex gap-2">
+              {!isWatching ? (
                 <Button 
-                  variant="outline-secondary"
-                  onClick={handleResetHistory}
+                  variant="primary" 
+                  onClick={handleStartMonitoring}
                 >
-                  Reset History
+                  Start Monitoring
                 </Button>
-              </div>
-            </Col>
-            <Col className="text-end">
-              <div className="text-muted mb-1">Status: {isWatching ? 
-                <Badge bg="success">Watching</Badge> : 
-                <Badge bg="secondary">Not Watching</Badge>}
-              </div>
-              <div className="text-muted small">
-                Processed Files: {processedFiles} | Last Checked: {formatLastChecked()}
-              </div>
-            </Col>
-          </Row>
-        </Form>
+              ) : (
+                <Button 
+                  variant="danger" 
+                  onClick={handleStopMonitoring}
+                >
+                  Stop Monitoring
+                </Button>
+              )}
+              
+              <Button 
+                variant="outline-secondary"
+                onClick={handleResetHistory}
+              >
+                Reset History
+              </Button>
+            </div>
+          </Col>
+          <Col className="text-end">
+            <div className="text-muted mb-1">Status: {isWatching ? 
+              <Badge bg="success">Watching</Badge> : 
+              <Badge bg="secondary">Not Watching</Badge>}
+            </div>
+            <div className="text-muted small">
+              Processed Files: {processedFiles} | Last Checked: {formatLastChecked()}
+            </div>
+          </Col>
+        </Row>
       </Card.Body>
     </Card>
   );
