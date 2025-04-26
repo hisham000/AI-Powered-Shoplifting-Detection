@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: file-hosting
+  namespace: eece-503n
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: file-hosting
+  template:
+    metadata:
+      labels:
+        app: file-hosting
+    spec:
+      containers:
+      - name: file-hosting
+        image: ${YOUR_REGISTRY}/file-hosting:latest  # Update with your image registry
+        ports:
+        - containerPort: 9000
+        volumeMounts:
+        - name: cctv-volume
+          mountPath: /CCTV
+          readOnly: true  # Since we're only reading the files
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+      volumes:
+      - name: cctv-volume
+        persistentVolumeClaim:
+          claimName: cctv-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: file-hosting
+  namespace: eece-503n
+spec:
+  selector:
+    app: file-hosting
+  ports:
+  - port: 9000
+    targetPort: 9000
+  type: ClusterIP
