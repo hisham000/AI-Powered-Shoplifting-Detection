@@ -3,6 +3,10 @@ name: PR Health Check
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/pr-health-check.yml
 
 jobs:
   health_check:
@@ -46,6 +50,27 @@ jobs:
           done
           echo "EEP did not become healthy in time"
           exit 1
+
+      - name: Download test video
+        run: |
+          echo "Copying test video from demo folder..."
+          cp demo/Shoplifting001_x264_9.mp4 test_video.mp4
+
+      - name: Test process-video endpoint
+        run: |
+          echo "Testing process-video endpoint..."
+          response=$(curl -s \
+            -F "file=@test_video.mp4" \
+            -F "video_id=test_video" \
+            http://localhost:8000/process-video)
+          echo "Response: $response"
+          if echo "$response" | jq -e 'has("shoplifting_detected") and has("video_id")' >/dev/null; then
+            echo "Video processing response has expected shape"
+            exit 0
+          else
+            echo "Unexpected video processing result: $response"
+            exit 1
+          fi
 
       - name: Stop services
         if: always()
