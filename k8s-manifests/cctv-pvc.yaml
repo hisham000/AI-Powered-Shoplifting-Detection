@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cctv-pvc
+  namespace: eece-503n
+spec:
+  storageClassName: local-storage
+  accessModes:
+    - ReadOnlyMany
+  resources:
+    requests:
+      storage: 10Gi
+  selector:
+    matchLabels:
+      type: local
+      app: file-hosting
