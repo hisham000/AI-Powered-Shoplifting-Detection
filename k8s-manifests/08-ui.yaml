@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ui
+  namespace: eece-503n
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ui
+  template:
+    metadata:
+      labels:
+        app: ui
+    spec:
+      containers:
+      - name: ui
+        # Make sure to build and push this image: docker build -t jadshaker/ui:latest ./ui && docker push jadshaker/ui:latest
+        image: jadshaker/ui:latest
+        ports:
+        - containerPort: 80
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ui
+  namespace: eece-503n
+spec:
+  selector:
+    app: ui
+  ports:
+  - port: 80
+    targetPort: 80
+    # You might want to assign a specific nodePort here if needed
+    # nodePort: 30080 
+  type: NodePort
