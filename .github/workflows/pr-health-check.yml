@@ -54,7 +54,7 @@ jobs:
       - name: Download test video
         run: |
           echo "Downloading test video from Google Drive..."
-          gdown "https://drive.google.com/uc?id=11gA7Ccxs1E4BpaueihdrEhKZazCdIsAF" -O test_video.mp4
+          gdown "https://drive.google.com/file/d/1R4mVabTng2bXHXE2eETTPlwZVn10hSdR/" -O test_video.mp4
 
       - name: Test process-video endpoint
         run: |
