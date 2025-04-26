@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mlruns-pv
+  labels:
+    type: local
+    app: iep2
+spec:
+  capacity:
+    storage: 5Gi  # Increased capacity for ML model artifacts
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-storage
+  local:
+    path: /opt/ml/models  # Standard path for ML models, easier to maintain
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - hishampc  # Automatically updated
