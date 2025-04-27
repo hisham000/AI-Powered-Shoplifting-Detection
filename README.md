@@ -17,6 +17,14 @@ Sample usages:
 
 ## Kubernetes Deployment
 
+First create the CCTV folder or replace the volume mounted below with your local path of the CCTV camera footage.
+
+```bash
+mkdir CCTV
+```
+
+Then create the clusters and load them.
+
 ```bash
 k3d cluster create shoplift \
   --servers 1 \
