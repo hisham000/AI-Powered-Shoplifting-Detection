@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iep2-deployment
+  namespace: shoplift
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: iep2
+  template:
+    metadata:
+      labels:
+        app: iep2
+    spec:
+      containers:
+        - name: iep2
+          image: jadshaker/iep2-predict:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5002
+          volumeMounts:
+            - name: mlruns
+              mountPath: /app/mlruns
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5002
+            initialDelaySeconds: 5
+            periodSeconds: 5
+
+      volumes:
+        - name: mlruns
+          persistentVolumeClaim:
+            claimName: mlruns-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iep2
+  namespace: shoplift
+spec:
+  selector:
+    app: iep2
+  ports:
+    - port: 5002
+      targetPort: 5002
+  type: ClusterIP

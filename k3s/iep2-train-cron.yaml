@@ -1,0 +1,30 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: iep2-train
+  namespace: shoplift
+spec:
+  schedule: '0 0 1,15 * *'
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: iep2-train
+              image: jadshaker/iep2-train:latest
+              imagePullPolicy: Always
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+                - name: mlruns
+                  mountPath: /app/mlruns
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: data-pvc
+            - name: mlruns
+              persistentVolumeClaim:
+                claimName: mlruns-pvc

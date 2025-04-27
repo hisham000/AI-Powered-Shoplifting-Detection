@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: file-hosting
+  namespace: shoplift
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: file-hosting
+  template:
+    metadata:
+      labels:
+        app: file-hosting
+    spec:
+      containers:
+        - name: file-hosting
+          image: jadshaker/file-hosting:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 9000
+          volumeMounts:
+            - name: cctv
+              mountPath: /CCTV
+      volumes:
+        - name: cctv
+          hostPath:
+            path: /CCTV
+            type: Directory
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: file-hosting-service
+  namespace: shoplift
+spec:
+  type: NodePort
+  selector:
+    app: file-hosting
+  ports:
+    - port: 9000
+      targetPort: 9000
+      nodePort: 31000

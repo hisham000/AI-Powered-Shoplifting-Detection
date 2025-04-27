@@ -1,0 +1,31 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: shoplift
+
+resources:
+  - data-bootstrap-job.yaml
+  - eep-k3s.yaml
+  - file-hosting-k3s.yaml
+  - iep1-k3s.yaml
+  - iep2-predict-k3s.yaml
+  - iep2-train-cron.yaml
+  - monitoring-deploy.yaml
+  - monitoring-pvc.yaml
+  - ui-k3s.yaml
+
+configMapGenerator:
+  - name: prometheus-config
+    files:
+      - monitoring/prometheus/prometheus.yml
+  - name: grafana-datasources
+    files:
+      - monitoring/grafana/datasources/prometheus.yml
+  - name: grafana-dashboards
+    files:
+      - monitoring/grafana/dashboards/dashboards.yml
+  - name: grafana-dashboard-data
+    files:
+      - monitoring/grafana/dashboard-data/model-monitoring-dashboard.json
+
+generatorOptions:
+  disableNameSuffixHash: true
