@@ -24,12 +24,12 @@ services:
     environment:
       - RUNNING_IN_DOCKER=true
       - IEP1_URL=http://iep1:5001
-      - IEP2_URL=http://iep2:5002
+      - IEP2_URL=http://iep2-predict:5002
     volumes:
       - ./data:/app/data
     depends_on:
       - iep1
-      - iep2
+      - iep2-predict
     expose:
       - '8000'
 
@@ -39,12 +39,21 @@ services:
     expose:
       - '5001'
 
-  iep2:
+  iep2-predict:
     build:
       context: ./IEP2_shoplifting_detection/predict
     expose:
       - '5002'
     volumes:
+      - ./mlruns:/app/mlruns
+    
+  iep2-train:
+    build:
+      context: ./IEP2_shoplifting_detection/train
+    expose:
+      - '5003'
+    volumes:
+      - ./data:/data
       - ./mlruns:/app/mlruns
 
   prometheus:
@@ -61,8 +70,6 @@ services:
       - '--web.enable-lifecycle'
     depends_on:
       - eep
-      - iep1
-      - iep2
 
   grafana:
     image: grafana/grafana:latest

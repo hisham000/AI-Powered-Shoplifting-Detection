@@ -4,18 +4,17 @@ This project uses three microservices (EEP, IEP1, IEP2) to detect humans and sho
 Sample usages:
 
 - Start services: `docker compose up`
-- Call EEP: `POST http://localhost:8000/process-video?sample_fps=4` with video file
+- Call EEP: `POST http://localhost:8000/process-video` with video file
 
 ## Example Response
 
 ```json
 {
-  "human_detected": true,
   "shoplifting_detected": true
 }
 ```
 
-## Kubernetes Deployment
+## Kubernetes Deployment Using DockerHub
 
 First create the CCTV folder or replace the volume mounted below with your local path of the CCTV camera footage.
 
@@ -44,6 +43,8 @@ kubectl -n shoplift get pods -w
 ```
 
 Once everything is up and running you can access the UI [here](http://localhost:30090).
+
+## Testing the System
 
 For testing purposes, you can run the simulation script to generate random CCTV footage.
 
