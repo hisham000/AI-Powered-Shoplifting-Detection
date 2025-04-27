@@ -5,14 +5,14 @@ WORKDIR /app
 # Copy requirements file
 COPY ./requirements.txt ./requirements.txt
 
+# Install system dependencies
+RUN apt-get update && apt-get install -y curl unzip && apt-get clean && rm -rf /var/lib/apt/lists/*
+
 # Install Python dependencies
 RUN pip install --no-cache-dir -r ./requirements.txt
 
 # instead of `pip install opencv-python`
 RUN pip install opencv-python-headless
-
-# Install gdown for downloading the mlruns folder
-RUN pip install --no-cache-dir gdown
 
 # Copy application files
 COPY . .
@@ -27,4 +27,4 @@ VOLUME ["/app/mlruns"]
 EXPOSE 5002
 
 # Command to run when container starts
-CMD ["sh", "-c", "if [ -z \"$(ls -A /app/mlruns)\" ]; then echo 'Downloading mlruns from Google Drive'; gdown 'https://drive.google.com/drive/u/6/folders/1qMPS1xd8Apkf0WJDlUjA5h7kaQDRDG5N' --folder --remaining-ok -O /app/mlruns; fi && uvicorn main:app --host 0.0.0.0 --port 5002"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0", "--port", "5002"]

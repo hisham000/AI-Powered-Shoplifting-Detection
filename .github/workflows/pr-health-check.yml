@@ -15,20 +15,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install gdown (Google-Drive CLI downloader)
-        run: pip install --no-cache-dir gdown
-
       - name: Download experiment artefacts
         env:
-          FOLDER_URL: https://drive.google.com/drive/u/6/folders/1qMPS1xd8Apkf0WJDlUjA5h7kaQDRDG5N
+          FOLDER_URL: https://hbrnlhwedogixxqnillo.supabase.co/storage/v1/object/public/mlruns//mlruns.zip
         run: |
-          mkdir -p mlruns
-          # --folder  → recursive download
-          # --remaining-ok → OK if folder has >50 files (gdow's hard limit)  
-          gdown "$FOLDER_URL" \
-                --folder \
-                --remaining-ok \
-                -O mlruns
+          curl -L "$FOLDER_URL" -o mlruns.zip \
+            && unzip mlruns.zip -d . \
+            && rm mlruns.zip
 
       - name: Start services via Docker Compose
         run: docker compose up --build -d
