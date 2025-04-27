@@ -4,7 +4,7 @@ metadata:
   name: iep2-deployment
   namespace: shoplift
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: iep2
