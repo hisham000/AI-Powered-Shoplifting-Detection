@@ -22,13 +22,6 @@ spec:
           volumeMounts:
             - name: mlruns
               mountPath: /app/mlruns
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 5002
-            initialDelaySeconds: 5
-            periodSeconds: 5
-
       volumes:
         - name: mlruns
           persistentVolumeClaim:
