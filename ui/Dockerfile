@@ -13,6 +13,14 @@ RUN npm install
 # Copy the rest of the application code
 COPY . .
 
+# accept build args
+ARG REACT_APP_EEP_URL
+ARG REACT_APP_FILE_SERVER_URL
+
+# expose them to the build
+ENV REACT_APP_EEP_URL=${REACT_APP_EEP_URL}
+ENV REACT_APP_FILE_SERVER_URL=${REACT_APP_FILE_SERVER_URL}
+
 # Build the application
 RUN npm run build
 
