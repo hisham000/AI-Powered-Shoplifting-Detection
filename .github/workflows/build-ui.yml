@@ -19,10 +19,15 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push UI image
-        uses: docker/build-push-action@v4
-        with:
-          context: ./ui
-          file: ./ui/Dockerfile
-          push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/ui:latest
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build UI image
+        run: |
+          docker build \
+          --build-arg REACT_APP_EEP_URL=http://localhost:30080 \
+          --build-arg REACT_APP_FILE_SERVER_URL=http://localhost:31000 \
+          -t ${{ secrets.DOCKERHUB_USERNAME }}/ui:latest ./ui
+
+      - name: Push UI image to Docker Hub
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/ui:latest
