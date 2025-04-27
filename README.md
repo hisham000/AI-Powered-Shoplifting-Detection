@@ -18,7 +18,6 @@ Sample usages:
 ## Kubernetes Deployment
 
 ```bash
-k3d cluster delete shoplift
 k3d cluster create shoplift \
   --servers 1 \
   --agents 0 \
