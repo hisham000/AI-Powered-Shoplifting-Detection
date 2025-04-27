@@ -36,6 +36,7 @@ k3d cluster create shoplift \
   --volume "$(pwd)/CCTV:/CCTV@server:0"
 kubectl config use-context k3d-shoplift
 kubectl create namespace shoplift
+kubectl apply -f k3s/monitoring-pvc.yaml
 kubectl apply -f k3s/data-bootstrap-job.yaml
 kubectl -n shoplift wait --for=condition=complete job/data-bootstrap --timeout=300s
 kubectl apply -k k3s
