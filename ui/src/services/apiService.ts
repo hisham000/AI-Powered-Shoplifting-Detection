@@ -2,8 +2,9 @@ import axios from 'axios';
 import { ProcessVideoResponse } from '../models/types';
 
 // Use environment variable with REACT_APP_ prefix if available, otherwise use default
-const API_BASE_URL = process.env.REACT_APP_EEP_URL || 'http://127.0.0.1:8000';
-const FILE_SERVER_URL = 'http://127.0.0.1:9000'; // File server URL
+const EEP_SERVICE_URL = process.env.REACT_APP_EEP_URL || 'http://127.0.0.1:8000';
+const FILE_SERVER_URL = process.env.REACT_APP_FILE_SERVER_URL || 'http://127.0.1:9000'; // File server URL
+// const FILE_SERVER_URL = 'http://127.0.0.1:9000'; // File server URL
 
 // Service for handling API calls to the EEP
 export const apiService = {
@@ -39,7 +40,7 @@ export const apiService = {
       formData.append('sample_fps', '4');
       
       // Set a timeout for the request
-      const response = await axios.post(`${API_BASE_URL}/process-video`, formData, {
+      const response = await axios.post(`${EEP_SERVICE_URL}/process-video`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -79,7 +80,7 @@ export const apiService = {
       const fileName = pathParts[pathParts.length - 1];
       const videoId = fileName.split('.')[0]; // Use filename without extension as ID
       
-      const response = await axios.post(`${API_BASE_URL}/confirm-video`, {
+      const response = await axios.post(`${EEP_SERVICE_URL}/confirm-video`, {
         video_id: videoId,
         label: isShoplifting ? 1 : 0
       }, {
@@ -97,7 +98,7 @@ export const apiService = {
   // Check if the EEP server is available
   checkServerStatus: async (): Promise<boolean> => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/health`, { 
+      const response = await axios.get(`${EEP_SERVICE_URL}/health`, { 
         timeout: 3000 
       });
       return response.status === 200;
